@@ -256,12 +256,12 @@ export class Studio3D {
     return this.showHardware;
   }
 
-  addPart({ name, length, width, thickness, pos, rot, explodeDir, material, parent = null, isDoor = false, doorIndex = 0, hingeSide = 'left' }) {
+  addPart({ name, length, width, thickness, pos, rot, explodeDir, material, parent = null, isDoor = false, doorIndex = 0, hingeSide = 'left', geometry = null }) {
     // În coordonate 3D Three.js:
     // X = Lungime (L)
     // Y = Înălțime / Grosime (T sau H)
     // Z = Lățime (W)
-    const geo = new THREE.BoxGeometry(length, thickness, width);
+    const geo = geometry || new THREE.BoxGeometry(length, thickness, width);
     const mat = material || this.createWoodMaterial(this.woodId);
     if (this.isSectionActive && mat) {
       mat.clippingPlanes = [this.clipPlane];
@@ -722,62 +722,336 @@ export class Studio3D {
       const T = params.thickness || defs.thickness || 24;
 
       if (archetype === 'table') {
-        const legT = Math.min(80, Math.max(45, Math.floor(T * 2.2)));
-        const legH = Math.max(100, H - T);
-        this.addPart({
-          name: 'Blat Masiv Masă',
-          length: L, width: W, thickness: T,
-          pos: { x: 0, y: H - T / 2, z: 0 },
-          explodeDir: { x: 0, y: 1.5, z: 0 },
-          material: woodMat
-        });
-        const lx = Math.max(20, (L - legT * 2 - 40) / 2);
-        const lz = Math.max(20, (W - legT * 2 - 40) / 2);
-        const legs = [
-          { name: 'Picior Față-Stânga', x: -lx, z: lz },
-          { name: 'Picior Față-Dreapta', x: lx, z: lz },
-          { name: 'Picior Spate-Stânga', x: -lx, z: -lz },
-          { name: 'Picior Spate-Dreapta', x: lx, z: -lz }
-        ];
-        legs.forEach(l => {
+        const titleLower = ((planDef && planDef.roTitle) || (planDef && planDef.title) || '').toLowerCase();
+        const isRound = planId.includes('round') || titleLower.includes('rotund') || params.shape === 'round';
+        const isNightstand = titleLower.includes('noptieră') || titleLower.includes('nightstand');
+        const isConsole = titleLower.includes('consolă') || titleLower.includes('console');
+        const isCoffeeTable = titleLower.includes('cafea') || titleLower.includes('coffee') || H <= 520;
+        const isWorkbenchOrStation = titleLower.includes('banc') || titleLower.includes('cărucior');
+
+        if (isRound) {
+          // ==========================================
+          // 1. MĂSUȚĂ / MASĂ ROTUNDĂ (Top Cilindric + Trepied / 4 Picioare Conice + Traversă Cruce)
+          // ==========================================
+          const radius = Math.round(Math.min(L, W) / 2);
+          const topRadius = radius;
+          const legH = H - T;
+          const legRadius = Math.max(14, Math.min(26, Math.floor(T * 0.9)));
+          const isLargeRound = radius >= 450;
+          const numLegs = isLargeRound ? 4 : 3;
+
+          // Blat rotund finisat masiv
+          const topGeo = new THREE.CylinderGeometry(topRadius, topRadius, T, 36);
           this.addPart({
-            name: l.name,
-            length: legT, width: legT, thickness: legH,
-            pos: { x: l.x, y: legH / 2, z: l.z },
-            explodeDir: { x: Math.sign(l.x) * 1.2, y: 0, z: Math.sign(l.z) * 1.2 },
+            name: `Blat Rotund Masiv (Ø${radius * 2}mm)`,
+            length: radius * 2, width: radius * 2, thickness: T,
+            pos: { x: 0, y: H - T / 2, z: 0 },
+            explodeDir: { x: 0, y: 1.6, z: 0 },
+            geometry: topGeo,
             material: woodMat
           });
-        });
-        const apronH = Math.min(90, Math.floor(legH * 0.25));
-        const apronY = H - T - apronH / 2;
-        this.addPart({
-          name: 'Traversă Longitudinală Față',
-          length: lx * 2, width: T, thickness: apronH,
-          pos: { x: 0, y: apronY, z: lz },
-          explodeDir: { x: 0, y: 0, z: 1.2 },
-          material: woodMat
-        });
-        this.addPart({
-          name: 'Traversă Longitudinală Spate',
-          length: lx * 2, width: T, thickness: apronH,
-          pos: { x: 0, y: apronY, z: -lz },
-          explodeDir: { x: 0, y: 0, z: -1.2 },
-          material: woodMat
-        });
-        this.addPart({
-          name: 'Traversă Transversală Stânga',
-          length: T, width: lz * 2 - legT, thickness: apronH,
-          pos: { x: -lx, y: apronY, z: 0 },
-          explodeDir: { x: -1.2, y: 0, z: 0 },
-          material: woodMat
-        });
-        this.addPart({
-          name: 'Traversă Transversală Dreapta',
-          length: T, width: lz * 2 - legT, thickness: apronH,
-          pos: { x: lx, y: apronY, z: 0 },
-          explodeDir: { x: 1.2, y: 0, z: 0 },
-          material: woodMat
-        });
+
+          // Picioare conice/cilindrice înclinate cu stil scandinav
+          const legInset = Math.max(40, Math.floor(radius * 0.58));
+          for (let i = 0; i < numLegs; i++) {
+            const angle = (i * 2 * Math.PI) / numLegs;
+            const lx = Math.cos(angle) * legInset;
+            const lz = Math.sin(angle) * legInset;
+            const legGeo = new THREE.CylinderGeometry(legRadius * 0.75, legRadius * 1.1, legH, 16);
+
+            this.addPart({
+              name: `Picior Cilindric #${i + 1} (${numLegs === 3 ? 'Trepied' : 'Nordic'})`,
+              length: legRadius * 2, width: legRadius * 2, thickness: legH,
+              pos: { x: lx, y: legH / 2, z: lz },
+              rot: { x: Math.sin(angle) * 0.08, z: -Math.cos(angle) * 0.08 },
+              explodeDir: { x: Math.cos(angle) * 1.3, y: 0, z: Math.sin(angle) * 1.3 },
+              geometry: legGeo,
+              material: woodMat
+            });
+          }
+
+          // Șasiu în cruce / stea sub blat pentru rigidizare
+          const crossBarLen = Math.max(120, legInset * 2 + legRadius * 2);
+          const crossH = Math.min(45, Math.floor(T * 1.6));
+          this.addPart({
+            name: 'Traversă Suport Cruce A',
+            length: crossBarLen, width: T, thickness: crossH,
+            pos: { x: 0, y: H - T - crossH / 2, z: 0 },
+            explodeDir: { x: 0, y: 0, z: 0.8 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Suport Cruce B',
+            length: T, width: crossBarLen, thickness: crossH,
+            pos: { x: 0, y: H - T - crossH / 2, z: 0 },
+            explodeDir: { x: 0.8, y: 0, z: 0 },
+            material: woodMat
+          });
+
+          // Dacă este măsuță de colț sau loft cu poliță inferioară
+          if (titleLower.includes('poliță') || titleLower.includes('raft') || titleLower.includes('colț')) {
+            const shelfRadius = Math.round(radius * 0.65);
+            const shelfY = Math.round(legH * 0.32);
+            const shelfGeo = new THREE.CylinderGeometry(shelfRadius, shelfRadius, Math.max(16, T * 0.75), 32);
+            this.addPart({
+              name: `Poliță Inferioară Rotundă (Ø${shelfRadius * 2}mm)`,
+              length: shelfRadius * 2, width: shelfRadius * 2, thickness: Math.max(16, T * 0.75),
+              pos: { x: 0, y: shelfY, z: 0 },
+              explodeDir: { x: 0, y: -1.2, z: 0 },
+              geometry: shelfGeo,
+              material: woodMat
+            });
+          }
+
+        } else if (isNightstand) {
+          // ==========================================
+          // 2. NOPTIERĂ CU SERTAR & NIȘĂ DESCHISĂ
+          // ==========================================
+          const legH = Math.round(H * 0.35);
+          const boxH = H - legH;
+          const innerW = L - 2 * T;
+          const boxBaseY = legH;
+
+          // Top
+          this.addPart({
+            name: 'Top Masiv Noptieră',
+            length: L, width: W, thickness: T,
+            pos: { x: 0, y: H - T / 2, z: 0 },
+            explodeDir: { x: 0, y: 1.4, z: 0 },
+            material: woodMat
+          });
+          // Laterale casetă
+          this.addPart({
+            name: 'Laterală Stânga Noptieră',
+            length: T, width: W, thickness: boxH - T,
+            pos: { x: -(L - T) / 2, y: boxBaseY + (boxH - T) / 2, z: 0 },
+            explodeDir: { x: -1.2, y: 0, z: 0 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Laterală Dreapta Noptieră',
+            length: T, width: W, thickness: boxH - T,
+            pos: { x: (L - T) / 2, y: boxBaseY + (boxH - T) / 2, z: 0 },
+            explodeDir: { x: 1.2, y: 0, z: 0 },
+            material: woodMat
+          });
+          // Bază
+          this.addPart({
+            name: 'Bază Casetă Noptieră',
+            length: innerW, width: W, thickness: T,
+            pos: { x: 0, y: boxBaseY + T / 2, z: 0 },
+            explodeDir: { x: 0, y: -0.8, z: 0 },
+            material: woodMat
+          });
+          // Poliță mediană nișă
+          this.addPart({
+            name: 'Poliță Mediană Nișă',
+            length: innerW, width: W - 15, thickness: T,
+            pos: { x: 0, y: boxBaseY + (boxH - T) * 0.5, z: 0 },
+            explodeDir: { x: 0, y: 0, z: 1.1 },
+            material: woodMat
+          });
+          // Față sertar inferior
+          const drawerH = Math.round((boxH - T) * 0.42);
+          this.addPart({
+            name: 'Față Sertar Glisant',
+            length: innerW - 6, width: T, thickness: drawerH,
+            pos: { x: 0, y: boxBaseY + T + drawerH / 2, z: (W - T) / 2 + 2 },
+            explodeDir: { x: 0, y: 0, z: 1.5 },
+            material: woodMat
+          });
+          // 4 Picioare oblice noptieră
+          const legT = 36;
+          const legX = (L - legT * 2 - 20) / 2;
+          const legZ = (W - legT * 2 - 20) / 2;
+          [
+            { name: 'Picior Față-Stânga', x: -legX, z: legZ },
+            { name: 'Picior Față-Dreapta', x: legX, z: legZ },
+            { name: 'Picior Spate-Stânga', x: -legX, z: -legZ },
+            { name: 'Picior Spate-Dreapta', x: legX, z: -legZ }
+          ].forEach(l => {
+            this.addPart({
+              name: l.name,
+              length: legT, width: legT, thickness: legH,
+              pos: { x: l.x, y: legH / 2, z: l.z },
+              explodeDir: { x: Math.sign(l.x), y: -0.5, z: Math.sign(l.z) },
+              material: woodMat
+            });
+          });
+
+        } else if (isConsole) {
+          // ==========================================
+          // 3. CONSOLĂ ÎNGUSTĂ DE PERETE
+          // ==========================================
+          const legT = 40;
+          const legH = H - T;
+          this.addPart({
+            name: 'Blat Consolă Îngustă',
+            length: L, width: W, thickness: T,
+            pos: { x: 0, y: H - T / 2, z: 0 },
+            explodeDir: { x: 0, y: 1.5, z: 0 },
+            material: woodMat
+          });
+          const lx = (L - legT - 30) / 2;
+          const lz = (W - legT - 20) / 2;
+          [
+            { name: 'Picior Față-Stânga', x: -lx, z: lz },
+            { name: 'Picior Față-Dreapta', x: lx, z: lz },
+            { name: 'Picior Spate-Stânga', x: -lx, z: -lz },
+            { name: 'Picior Spate-Dreapta', x: lx, z: -lz }
+          ].forEach(l => {
+            this.addPart({
+              name: l.name,
+              length: legT, width: legT, thickness: legH,
+              pos: { x: l.x, y: legH / 2, z: l.z },
+              explodeDir: { x: Math.sign(l.x), y: 0, z: Math.sign(l.z) },
+              material: woodMat
+            });
+          });
+          // Traverse superioare zvelte
+          const apronH = 65;
+          const apronY = H - T - apronH / 2;
+          this.addPart({
+            name: 'Traversă Față Zveltă',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: lz },
+            explodeDir: { x: 0, y: 0, z: 1.2 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Spate Zveltă',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: -lz },
+            explodeDir: { x: 0, y: 0, z: -1.2 },
+            material: woodMat
+          });
+          // Rigidizare transversală
+          [-lx, lx].forEach((sideX, idx) => {
+            this.addPart({
+              name: `Traversă Laterală #${idx + 1}`,
+              length: T, width: lz * 2 - legT, thickness: apronH,
+              pos: { x: sideX, y: apronY, z: 0 },
+              explodeDir: { x: Math.sign(sideX) * 1.2, y: 0, z: 0 },
+              material: woodMat
+            });
+          });
+
+        } else if (isCoffeeTable && (titleLower.includes('poliță') || titleLower.includes('loft') || titleLower.includes('casetat'))) {
+          // ==========================================
+          // 4. MĂSUȚĂ DE CAFEA CU POLIȚĂ / CASETATĂ
+          // ==========================================
+          const legT = Math.min(65, Math.max(45, Math.floor(T * 1.8)));
+          const legH = H - T;
+          this.addPart({
+            name: 'Blat Masiv Măsuță',
+            length: L, width: W, thickness: T,
+            pos: { x: 0, y: H - T / 2, z: 0 },
+            explodeDir: { x: 0, y: 1.5, z: 0 },
+            material: woodMat
+          });
+          const lx = (L - legT * 2 - 30) / 2;
+          const lz = (W - legT * 2 - 30) / 2;
+          [
+            { name: 'Picior Față-Stânga', x: -lx, z: lz },
+            { name: 'Picior Față-Dreapta', x: lx, z: lz },
+            { name: 'Picior Spate-Stânga', x: -lx, z: -lz },
+            { name: 'Picior Spate-Dreapta', x: lx, z: -lz }
+          ].forEach(l => {
+            this.addPart({
+              name: l.name,
+              length: legT, width: legT, thickness: legH,
+              pos: { x: l.x, y: legH / 2, z: l.z },
+              explodeDir: { x: Math.sign(l.x) * 1.2, y: 0, z: Math.sign(l.z) * 1.2 },
+              material: woodMat
+            });
+          });
+          const apronH = Math.min(75, Math.floor(legH * 0.22));
+          const apronY = H - T - apronH / 2;
+          this.addPart({
+            name: 'Traversă Longitudinală Față',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: lz },
+            explodeDir: { x: 0, y: 0, z: 1.2 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Longitudinală Spate',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: -lz },
+            explodeDir: { x: 0, y: 0, z: -1.2 },
+            material: woodMat
+          });
+          // Poliță inferioară reviste doar dacă modelul o specifică
+          const shelfH = Math.round(legH * 0.28);
+          this.addPart({
+            name: 'Poliță Inferioară Reviste',
+            length: lx * 2 - 20, width: lz * 2 - 20, thickness: Math.max(16, T * 0.75),
+            pos: { x: 0, y: shelfH, z: 0 },
+            explodeDir: { x: 0, y: -1.1, z: 0 },
+            material: woodMat
+          });
+
+        } else {
+          // ==========================================
+          // 5. MASĂ CLASICĂ / MINIMALISTĂ / DINING FĂRĂ POLIȚĂ INUTILE
+          // ==========================================
+          const legT = Math.min(85, Math.max(45, Math.floor(T * 2.0)));
+          const legH = Math.max(100, H - T);
+          this.addPart({
+            name: 'Blat Masiv Masă',
+            length: L, width: W, thickness: T,
+            pos: { x: 0, y: H - T / 2, z: 0 },
+            explodeDir: { x: 0, y: 1.5, z: 0 },
+            material: woodMat
+          });
+          const lx = Math.max(20, (L - legT * 2 - 40) / 2);
+          const lz = Math.max(20, (W - legT * 2 - 40) / 2);
+          const legs = [
+            { name: 'Picior Față-Stânga', x: -lx, z: lz },
+            { name: 'Picior Față-Dreapta', x: lx, z: lz },
+            { name: 'Picior Spate-Stânga', x: -lx, z: -lz },
+            { name: 'Picior Spate-Dreapta', x: lx, z: -lz }
+          ];
+          legs.forEach(l => {
+            this.addPart({
+              name: l.name,
+              length: legT, width: legT, thickness: legH,
+              pos: { x: l.x, y: legH / 2, z: l.z },
+              explodeDir: { x: Math.sign(l.x) * 1.2, y: 0, z: Math.sign(l.z) * 1.2 },
+              material: woodMat
+            });
+          });
+          const apronH = Math.min(90, Math.floor(legH * 0.22));
+          const apronY = H - T - apronH / 2;
+          this.addPart({
+            name: 'Traversă Longitudinală Față',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: lz },
+            explodeDir: { x: 0, y: 0, z: 1.2 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Longitudinală Spate',
+            length: lx * 2, width: T, thickness: apronH,
+            pos: { x: 0, y: apronY, z: -lz },
+            explodeDir: { x: 0, y: 0, z: -1.2 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Transversală Stânga',
+            length: T, width: lz * 2 - legT, thickness: apronH,
+            pos: { x: -lx, y: apronY, z: 0 },
+            explodeDir: { x: -1.2, y: 0, z: 0 },
+            material: woodMat
+          });
+          this.addPart({
+            name: 'Traversă Transversală Dreapta',
+            length: T, width: lz * 2 - legT, thickness: apronH,
+            pos: { x: lx, y: apronY, z: 0 },
+            explodeDir: { x: 1.2, y: 0, z: 0 },
+            material: woodMat
+          });
+        }
 
       } else if (archetype === 'bench') {
         const seatH = Math.min(500, H);

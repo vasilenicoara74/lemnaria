@@ -111,6 +111,30 @@ export function getProjectIllustration(id, archetype = 'table', title = 'Proiect
   if (PROJECT_IMAGES[id]) {
     return PROJECT_IMAGES[id];
   }
+
+  const t = (title || '').toLowerCase();
+  const i = (id || '').toLowerCase();
+
+  // Măsuțe rotunde / Mese rotunde
+  if (t.includes('rotund') || i.includes('round')) {
+    return 'https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';
+  }
+
+  // Noptieră
+  if (t.includes('noptier') || i.includes('nightstand')) {
+    return 'https://images.unsplash.com/photo-1532372320572-cda25653a26d?auto=format&fit=crop&w=800&q=80';
+  }
+
+  // Consolă perete
+  if (t.includes('consol') || i.includes('console')) {
+    return 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=800&q=80';
+  }
+
+  // Masă dining mare
+  if (t.includes('dining') || i.includes('dining')) {
+    return 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=800&q=80';
+  }
+
   if (ARCHETYPE_IMAGES[archetype]) {
     return ARCHETYPE_IMAGES[archetype];
   }

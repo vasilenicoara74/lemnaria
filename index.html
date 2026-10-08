@@ -43,7 +43,7 @@
     if ('caches' in window) {
       caches.keys().then((names) => {
         names.forEach((name) => {
-          if (name !== 'lemnaria-v14') caches.delete(name);
+          if (name !== 'lemnaria-v15') caches.delete(name);
         });
       });
     }
@@ -52,11 +52,11 @@
         registrations.forEach((reg) => reg.update());
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=14')
+        navigator.serviceWorker.register('./sw.js?v=15')
           .catch((err) => console.warn('SW:', err));
       });
     }
   </script>
-  <script type="module" src="js/app.js?v=14"></script>
+  <script type="module" src="js/app.js?v=15"></script>
 </body>
 </html>
