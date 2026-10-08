@@ -140,3 +140,17 @@ table.t th{color:var(--muted);font-weight:600}
 .md p{margin:.4em 0}.md ul{margin:.3em 0;padding-left:1.2em}
 .md code{background:#f2ece4;padding:1px 4px;border-radius:4px}
 .md h4{margin:.6em 0 .2em}
+
+/* CAD Configurator & Drag-and-Drop Palette */
+.cad-palette{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:8px 4px;margin:8px 0}
+.cad-palette::-webkit-scrollbar{height:4px}
+.cad-palette::-webkit-scrollbar-thumb{background:#cbbfb2;border-radius:4px}
+.cad-item-card{flex:0 0 92px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:grab;user-select:none;touch-action:none;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:transform .15s,border-color .15s}
+.cad-item-card:active{transform:scale(.95);cursor:grabbing}
+.cad-item-card.active-source{border-color:var(--accent);background:#fff8f0;box-shadow:0 0 0 2px rgba(232,119,46,.25)}
+.cad-item-icon{font-size:22px;line-height:1}
+.cad-item-title{font-size:11px;font-weight:700;color:var(--ink);text-align:center;white-space:nowrap}
+.cad-item-sub{font-size:9px;color:var(--muted);text-align:center;white-space:nowrap}
+.cad-ghost{position:fixed;pointer-events:none;z-index:1000;transform:translate(-50%,-50%);background:rgba(232,119,46,.92);color:#fff;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;gap:6px;backdrop-filter:blur(4px)}
+.cad-inspector{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+

@@ -1551,6 +1551,66 @@ export class Studio3D {
       });
     }
 
+    // 10. Picioare reglabile H=100mm la bază
+    if (config.hasLegs) {
+      const legPositions = [
+        { x: -W / 2 + 50, z: D / 2 - 50 },
+        { x: W / 2 - 50, z: D / 2 - 50 },
+        { x: -W / 2 + 50, z: -D / 2 + 50 },
+        { x: W / 2 - 50, z: -D / 2 + 50 }
+      ];
+      if (W > 900) {
+        legPositions.push({ x: 0, z: 0 });
+      }
+      legPositions.forEach((lp, lIdx) => {
+        const legGeo = new THREE.CylinderGeometry(22, 26, 100, 16);
+        const legMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
+        const legMesh = new THREE.Mesh(legGeo, legMat);
+        legMesh.position.set(lp.x, -50, lp.z);
+        this.scene.add(legMesh);
+        const legPart = {
+          name: `Picior Reglabil H=100mm #${lIdx + 1}`,
+          length: 50, width: 50, thickness: 100,
+          pos: { x: lp.x, y: -50, z: lp.z },
+          basePos: new THREE.Vector3(lp.x, -50, lp.z),
+          mesh: legMesh,
+          explodeDir: new THREE.Vector3(0, -1.2, 0)
+        };
+        legMesh.userData = legPart;
+        this.parts.push(legPart);
+      });
+    }
+
+    // 11. Benzi LED dacă există
+    (config.leds || []).forEach((ld, idx) => {
+      const x1 = ld.x1 != null ? ld.x1 : T;
+      const x2 = ld.x2 != null ? ld.x2 : (W - T);
+      const ledL = Math.max(30, x2 - x1);
+      const posX = -W / 2 + (x1 + x2) / 2;
+      const posY = ld.y;
+
+      const ledGeo = new THREE.BoxGeometry(ledL, 6, 12);
+      const ledMat = new THREE.MeshStandardMaterial({
+        color: 0xfffaed,
+        emissive: new THREE.Color(0xffe082),
+        emissiveIntensity: 0.8
+      });
+      const ledMesh = new THREE.Mesh(ledGeo, ledMat);
+      ledMesh.position.set(posX, posY, 0);
+      this.scene.add(ledMesh);
+
+      const ledPart = {
+        name: `Bandă LED Frezată 12V #${idx + 1} (L=${Math.round(ledL)}mm)`,
+        length: ledL, width: 12, thickness: 6,
+        pos: { x: posX, y: posY, z: 0 },
+        basePos: new THREE.Vector3(posX, posY, 0),
+        mesh: ledMesh,
+        explodeDir: new THREE.Vector3(0, 0, 1.2)
+      };
+      ledMesh.userData = ledPart;
+      this.parts.push(ledPart);
+    });
+
     this.focusCamera();
   }
 

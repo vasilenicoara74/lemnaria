@@ -1,12 +1,27 @@
-// Modul Schițare CAD 2D Interactivă & Extrudare Complet Personalizabilă 3D
-// Permite utilizatorului să traseze liber linii, polițe, montanți, uși și sertare pe ecran
+// Modul Atelier CAD Configurator Profesional – Drag & Drop, Bibliotecă Componente & Inspector Parametric
+// Oferă libertate totală de proiectare mobilier cu elemente modulare, cotare ISO și randare avansată
+
+export const CAD_PALETTE_ITEMS = [
+  { type: 'shelf', icon: '➖', title: 'Poliță 18mm', sub: 'Raft ajustabil', defaultT: 18 },
+  { type: 'thickShelf', icon: '🪵', title: 'Poliță Grea 28mm', sub: 'Sarcină masivă', defaultT: 28 },
+  { type: 'divider', icon: '┃', title: 'Montant Vertical', sub: 'Separator nișă' },
+  { type: 'door-left', icon: '🚪', title: 'Ușă Stânga', sub: 'Balama Soft-Close' },
+  { type: 'door-right', icon: '🚪', title: 'Ușă Dreapta', sub: 'Balama Soft-Close' },
+  { type: 'door-double', icon: '🚪🚪', title: 'Uși Duble', sub: 'Pereche simetrică' },
+  { type: 'drawer-std', icon: '🗄️', title: 'Sertar H=160', sub: 'Glisieră amortizată', height: 160 },
+  { type: 'drawer-deep', icon: '🗄️', title: 'Sertar Oală H=280', sub: 'Depozitare adâncă', height: 280 },
+  { type: 'drawer-triple', icon: '🗄️🗄️', title: 'Bloc 3 Sertare', sub: 'Coloană egală' },
+  { type: 'rod', icon: '👔', title: 'Bară Umerașe', sub: 'Tub cromat dressing' },
+  { type: 'led', icon: '💡', title: 'Bandă LED', sub: 'Canal frezat 12V' },
+  { type: 'legs', icon: '🦶', title: 'Picioare Reglabile', sub: 'H=100mm plintă' }
+];
 
 export class SketcherStudio {
   constructor(container, options = {}) {
     this.container = container;
     this.options = options;
 
-    // Dimensiuni și elemente dulap complet customizabile
+    // Configurație structură complet modulară
     this.cabinet = {
       width: 1000,
       height: 1800,
@@ -17,37 +32,46 @@ export class SketcherStudio {
       hasLocks: false,
       hasPushToOpen: false,
       hasAngleBrackets: false,
-      // Polițe configurabile liber: { id, y, x1, x2 }
+      hasLegs: false,
+      // Polițe configurabile: { id, y, x1, x2, thickness, material, edgeBand, joinery }
       shelves: [
-        { id: 'sh_1', y: 400, x1: 18, x2: 982 },
-        { id: 'sh_2', y: 1200, x1: 18, x2: 982 }
+        { id: 'sh_1', y: 400, x1: 18, x2: 982, thickness: 18, material: 'PAL Stejar 18mm', joinery: 'confirmat' },
+        { id: 'sh_2', y: 1200, x1: 18, x2: 982, thickness: 18, material: 'PAL Stejar 18mm', joinery: 'confirmat' }
       ],
-      // Montanți verticali configurabili liber: { id, x, y1, y2 }
+      // Montanți: { id, x, y1, y2, thickness, material }
       dividers: [
-        { id: 'div_1', x: 500, y1: 18, y2: 1782 }
+        { id: 'div_1', x: 500, y1: 18, y2: 1782, thickness: 18, material: 'PAL Stejar 18mm' }
       ],
-      // Uși plasate pe compartimente specifice: { id, x1, x2, y1, y2, type: 'single-left'|'single-right'|'double' }
+      // Uși: { id, x1, x2, y1, y2, type: 'single-left'|'single-right'|'double', handle: 'bar'|'knob'|'push' }
       doors: [
-        { id: 'dr_1', x1: 18, x2: 500, y1: 18, y2: 1200, type: 'single-left' }
+        { id: 'dr_1', x1: 18, x2: 500, y1: 18, y2: 1200, type: 'single-left', handle: 'bar' }
       ],
-      // Sertare plasate pe compartimente specifice: { id, x1, x2, y1, y2, height }
+      // Sertare: { id, x1, x2, y1, y2, height, slides: 'soft-close' }
       drawers: [
-        { id: 'dw_1', x1: 500, x2: 982, y1: 18, y2: 240, height: 210 }
+        { id: 'dw_1', x1: 500, x2: 982, y1: 18, y2: 240, height: 210, slides: 'soft-close' }
       ],
-      // Bare pentru haine (umerașe): { id, x1, x2, y }
+      // Bare haine: { id, x1, x2, y }
       rods: [
         { id: 'rod_1', x1: 18, x2: 500, y: 1140 }
-      ]
+      ],
+      // Benzi LED: { id, x1, x2, y }
+      leds: []
     };
 
-    this.selectedTool = 'shelf'; // 'shelf', 'divider', 'door', 'drawer', 'rod', 'drag', 'eraser', 'select'
+    this.selectedTool = 'select'; // unealtă activă sau tip element selectat din paletă
     this.selectedItem = null;
+    this.viewMode = 'technical'; // 'technical', 'interior', 'facade'
     this.zoomScale = 1.0;
     this.panOffset = { x: 0, y: 0 };
     this.isDrawing = false;
     this.drawingStroke = null;
     this.draggingItem = null;
     this.dragStartPos = null;
+    this.dropTargetComp = null;
+
+    // Drag & Drop din paletă
+    this.paletteDragItem = null;
+    this.ghostEl = null;
 
     this.normalizeCabinet();
   }
@@ -57,34 +81,37 @@ export class SketcherStudio {
     const H = this.cabinet.height || 1800;
     const T = this.cabinet.thickness || 18;
 
-    // Normalizare polițe vechi (dacă erau array de numere simple)
     if (Array.isArray(this.cabinet.shelves)) {
       this.cabinet.shelves = this.cabinet.shelves.map((sh, idx) => {
         if (typeof sh === 'number') {
-          return { id: `sh_${idx + 1}`, y: sh, x1: T, x2: W - T };
+          return { id: `sh_${idx + 1}`, y: sh, x1: T, x2: W - T, thickness: T };
         }
         return {
           id: sh.id || `sh_${idx + 1}`,
           y: Math.round(sh.y),
           x1: Math.round(sh.x1 != null ? sh.x1 : T),
-          x2: Math.round(sh.x2 != null ? sh.x2 : W - T)
+          x2: Math.round(sh.x2 != null ? sh.x2 : W - T),
+          thickness: sh.thickness || T,
+          material: sh.material || 'PAL Standard 18mm',
+          joinery: sh.joinery || 'confirmat'
         };
       });
     } else {
       this.cabinet.shelves = [];
     }
 
-    // Normalizare montanți vechi (dacă erau array de numere simple)
     if (Array.isArray(this.cabinet.dividers)) {
       this.cabinet.dividers = this.cabinet.dividers.map((dv, idx) => {
         if (typeof dv === 'number') {
-          return { id: `div_${idx + 1}`, x: dv, y1: T, y2: H - T };
+          return { id: `div_${idx + 1}`, x: dv, y1: T, y2: H - T, thickness: T };
         }
         return {
           id: dv.id || `div_${idx + 1}`,
           x: Math.round(dv.x),
           y1: Math.round(dv.y1 != null ? dv.y1 : T),
-          y2: Math.round(dv.y2 != null ? dv.y2 : H - T)
+          y2: Math.round(dv.y2 != null ? dv.y2 : H - T),
+          thickness: dv.thickness || T,
+          material: dv.material || 'PAL Standard 18mm'
         };
       });
     } else {
@@ -94,86 +121,90 @@ export class SketcherStudio {
     if (!Array.isArray(this.cabinet.doors)) this.cabinet.doors = [];
     if (!Array.isArray(this.cabinet.drawers)) this.cabinet.drawers = [];
     if (!Array.isArray(this.cabinet.rods)) this.cabinet.rods = [];
+    if (!Array.isArray(this.cabinet.leds)) this.cabinet.leds = [];
   }
 
   render() {
     this.container.innerHTML = `
-      <div class="card" style="margin-top:0;">
-        <div class="row between">
+      <div class="card" style="margin-top:0;padding:12px;">
+        <div class="row between" style="align-items:flex-start;">
           <div>
-            <h3 style="margin:0 0 2px;">Atelier Schiță 2D & CAD Custom</h3>
-            <span class="muted small">Trasează liber linii pentru polițe, montanți, uși și sertare</span>
+            <h3 style="margin:0 0 2px;">Configurator CAD Mobilier</h3>
+            <span class="muted small">Trage elemente din catalog direct în corp (Drag & Drop)</span>
           </div>
-          <span class="badge o">Libertate Totală</span>
+          <div style="display:flex;gap:4px;">
+            <button class="btn sm ${this.viewMode === 'technical' ? 'acc' : 'ghost'}" id="vmTechBtn" title="Vedere tehnică cotată">📐 Tehnic</button>
+            <button class="btn sm ${this.viewMode === 'interior' ? 'acc' : 'ghost'}" id="vmIntBtn" title="Vedere structură interioară">📂 Interior</button>
+            <button class="btn sm ${this.viewMode === 'facade' ? 'acc' : 'ghost'}" id="vmFacBtn" title="Vedere fațadă cu uși">🚪 Fațadă</button>
+          </div>
         </div>
 
-        <!-- Preseturi Rapide & Pânză Goală -->
-        <div class="chips" id="sketchPresets" style="margin-top:10px;">
-          <button class="chip" data-preset="empty">✨ Pânză Goală (De la zero)</button>
-          <button class="chip on" data-preset="dressingAsym">👗 Dressing Asimetric (1000x1800)</button>
-          <button class="chip" data-preset="wardrobe2">🚪 Dulap 2 Uși (800x1200)</button>
-          <button class="chip" data-preset="dresser4">🗄️ Comodă Sertare (900x850)</button>
-          <button class="chip" data-preset="kitchenUnit">🍽️ Corp Bucătărie (600x720)</button>
-          <button class="chip" data-preset="openBookshelf">📚 Etajeră Cărți (750x1500)</button>
+        <!-- Catalog Vizual de Componente Drag & Drop -->
+        <div style="margin-top:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">Bibliotecă Elemente Modulare (Trage în Corp):</span>
+            <span style="font-size:11px;color:var(--accent);font-weight:600;">👆 Atinge sau Trage</span>
+          </div>
+          <div class="cad-palette" id="cadPalette">
+            ${CAD_PALETTE_ITEMS.map(item => `
+              <div class="cad-item-card" data-type="${item.type}">
+                <div class="cad-item-icon">${item.icon}</div>
+                <div class="cad-item-title">${item.title}</div>
+                <div class="cad-item-sub">${item.sub}</div>
+              </div>
+            `).join('')}
+          </div>
         </div>
 
-        <!-- Bara Principală de Unelte CAD (Scrollabilă pe telefon) -->
-        <div class="dtool" style="margin-top:8px;border-radius:12px;border:1px solid var(--line);align-items:center;">
-          <button class="btn sm ${this.selectedTool === 'shelf' ? 'acc' : 'ghost'}" data-tool="shelf" title="Trasează poliță orizontală cu degetul sau apasă pe un compartiment">
-            ➖ Trasează Poliță
+        <!-- Bara Secundară de Acțiuni Rapide -->
+        <div class="dtool" style="margin-top:4px;border-radius:10px;padding:6px 8px;border:1px solid var(--line);align-items:center;">
+          <button class="btn sm ${this.selectedTool === 'select' ? 'acc' : 'ghost'}" data-action="select" title="Selectează și trage elemente direct pe ecran">
+            👆 Selectare / Mutare
           </button>
-          <button class="btn sm ${this.selectedTool === 'divider' ? 'acc' : 'ghost'}" data-tool="divider" title="Trasează montant vertical cu degetul sau apasă pe un compartiment">
-            ┃ Trasează Montant
-          </button>
-          <button class="btn sm ${this.selectedTool === 'door' ? 'acc' : 'ghost'}" data-tool="door" title="Apasă pe un compartiment pentru a pune ușă (simplă sau dublă)">
-            🚪 Pune Ușă
-          </button>
-          <button class="btn sm ${this.selectedTool === 'drawer' ? 'acc' : 'ghost'}" data-tool="drawer" title="Apasă pe un compartiment pentru a pune sertar">
-            🗄️ Pune Sertar
-          </button>
-          <button class="btn sm ${this.selectedTool === 'rod' ? 'acc' : 'ghost'}" data-tool="rod" title="Apasă pe un compartiment pentru bară de umerașe">
-            👔 Bară Haine
-          </button>
-          <button class="btn sm ${this.selectedTool === 'drag' ? 'acc' : 'ghost'}" data-tool="drag" title="Trage cu degetul de orice poliță sau montant pentru a-l muta în timp real">
-            ↔️ Mută Piesa
-          </button>
-          <button class="btn sm ${this.selectedTool === 'select' ? 'acc' : 'ghost'}" data-tool="select" title="Selectează o piesă pentru a-i vedea și edita cota la milimetru">
-            👆 Selectare / Cotă
-          </button>
-          <button class="btn sm ${this.selectedTool === 'eraser' ? 'acc' : 'ghost'}" data-tool="eraser" title="Radieră: apasă pe orice piesă sau element pentru a-l șterge">
+          <button class="btn sm ${this.selectedTool === 'eraser' ? 'acc' : 'ghost'}" data-action="eraser" title="Șterge oricare element atins">
             🧹 Radieră
           </button>
-          <button class="btn sm ghost" id="resetToFrameBtn" title="Șterge tot interiorul și lasă doar carcasa exterioară">
-            🗑️ Golește Interiorul
+          <div class="sep"></div>
+          <button class="btn sm ghost" id="cadPresetEmpty" title="Golește interiorul pentru libertate totală de la zero">
+            ✨ Pânză Goală
+          </button>
+          <button class="btn sm ghost" id="cadPresetDressing" title="Încarcă dressing mare">
+            👗 Dressing
+          </button>
+          <button class="btn sm ghost" id="cadPresetKitchen" title="Încarcă corp bucătărie">
+            🍽️ Bucătărie
+          </button>
+          <button class="btn sm ghost" id="cadPresetDresser" title="Comodă 4 sertare">
+            🗄️ Comodă
           </button>
         </div>
 
-        <!-- Canvas Schiță CAD cu Butoane de Zoom & Mesaj Interactiv -->
-        <div style="position:relative;margin-top:10px;background:#fcfbf9;border-radius:12px;border:1px solid var(--line);overflow:hidden;touch-action:none;">
+        <!-- Canvas CAD Interactiv cu Ghidaje Magnetice și Drop Zone -->
+        <div style="position:relative;margin-top:10px;background:#fcfaf7;border-radius:14px;border:1px solid var(--line);overflow:hidden;touch-action:none;">
           <canvas id="sketchCanvas" width="560" height="460" style="display:block;width:100%;height:auto;cursor:crosshair;"></canvas>
           
-          <!-- Butoane plutitoare Zoom -->
+          <!-- Butoane plutitoare Zoom & Pan -->
           <div style="position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px;z-index:4;">
-            <button id="sketchZoomInBtn" class="btn sm ghost" style="background:rgba(255,255,255,.92);font-weight:bold;padding:6px 10px;box-shadow:0 2px 5px rgba(0,0,0,.15);" title="Mărește">🔍+</button>
-            <button id="sketchZoomOutBtn" class="btn sm ghost" style="background:rgba(255,255,255,.92);font-weight:bold;padding:6px 10px;box-shadow:0 2px 5px rgba(0,0,0,.15);" title="Micșorează">🔍−</button>
-            <button id="sketchZoomResetBtn" class="btn sm ghost" style="background:rgba(255,255,255,.92);font-weight:bold;padding:4px 6px;font-size:11px;box-shadow:0 2px 5px rgba(0,0,0,.15);" title="Reset 100%">100%</button>
+            <button id="cadZoomIn" class="btn sm ghost" style="background:rgba(255,255,255,.94);font-weight:bold;padding:6px 10px;box-shadow:0 2px 5px rgba(0,0,0,.12);">🔍+</button>
+            <button id="cadZoomOut" class="btn sm ghost" style="background:rgba(255,255,255,.94);font-weight:bold;padding:6px 10px;box-shadow:0 2px 5px rgba(0,0,0,.12);">🔍−</button>
+            <button id="cadZoomReset" class="btn sm ghost" style="background:rgba(255,255,255,.94);font-weight:bold;padding:4px 6px;font-size:11px;box-shadow:0 2px 5px rgba(0,0,0,.12);">100%</button>
           </div>
 
-          <!-- Ghidaj tactil jos -->
-          <div id="sketchHintBar" style="position:absolute;bottom:8px;left:10px;right:10px;font-size:12px;color:#4a3f35;background:rgba(255,255,255,.94);padding:6px 12px;border-radius:8px;box-shadow:0 1px 5px rgba(0,0,0,.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;z-index:4;">
-            <span id="sketchStatusMsg" style="font-weight:600;">Trage o linie sau apasă pe o nișă pentru a adăuga poliță</span>
-            <div id="sketchEditRow" style="display:none;align-items:center;gap:6px;">
-              <span id="sketchEditLabel" style="font-size:11px;font-weight:bold;color:var(--accent);"></span>
-              <input type="number" id="sketchEditInput" class="i" style="width:75px;padding:4px 6px;height:28px;font-size:12px;font-weight:bold;" step="10">
-              <button class="btn sm acc" id="sketchEditApplyBtn" style="padding:4px 8px;font-size:11px;height:28px;">Aplică</button>
-              <button class="btn sm ghost" id="sketchEditDelBtn" style="padding:4px 8px;font-size:11px;height:28px;color:#c62828;">Șterge</button>
-            </div>
+          <!-- Bară de Stare / Prompt Interactiv -->
+          <div id="cadStatusBar" style="position:absolute;bottom:8px;left:10px;right:10px;font-size:12px;color:#3e3328;background:rgba(255,255,255,.95);padding:6px 12px;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.12);display:flex;justify-content:space-between;align-items:center;z-index:4;">
+            <span id="cadStatusText" style="font-weight:600;">Trage o piesă din bibliotecă sau atinge corpul pentru a modifica</span>
+            <span id="cadCoordsBadge" style="font-size:11px;font-weight:700;color:var(--accent);"></span>
           </div>
         </div>
 
-        <!-- Parametri Dimensiuni Carcasă & Feronerie -->
+        <!-- PANOU INSPECTOR / CONFIGURATOR ELEMENT SELECTAT -->
+        <div id="cadInspectorContainer" class="cad-inspector" style="display:none;">
+          <!-- Generat dinamic în updateInspector() -->
+        </div>
+
+        <!-- Cote Corp Exterior & Feronerie Globală -->
         <div class="card" style="margin:12px 0 0;background:#fff;border:1px solid var(--line);padding:12px;">
-          <h4 style="margin:0 0 8px;">Cote Corp Exterior & Tehnologie Îmbinare</h4>
+          <h4 style="margin:0 0 8px;">Cote Corp General & Tehnologie Fabricație</h4>
           <div class="row" style="gap:8px;">
             <div class="grow">
               <label class="f">Lățime Totală - L (mm)</label>
@@ -190,9 +221,9 @@ export class SketcherStudio {
           </div>
           <div class="row" style="gap:8px;margin-top:8px;">
             <div class="grow">
-              <label class="f">Grosime Panou (T)</label>
+              <label class="f">Grosime Panou Carcasă</label>
               <select id="cabT" class="i">
-                <option value="18" ${this.cabinet.thickness === 18 ? 'selected' : ''}>18 mm (Standard PAL / Masiv)</option>
+                <option value="18" ${this.cabinet.thickness === 18 ? 'selected' : ''}>18 mm (Standard PAL Melaminat)</option>
                 <option value="22" ${this.cabinet.thickness === 22 ? 'selected' : ''}>22 mm (Robustețe mărită)</option>
                 <option value="28" ${this.cabinet.thickness === 28 ? 'selected' : ''}>28 mm (Lemn masiv gros)</option>
               </select>
@@ -208,19 +239,18 @@ export class SketcherStudio {
             </div>
           </div>
 
-          <!-- Accesorii Opționale -->
           <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;gap:12px;font-size:13px;">
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
               <input type="checkbox" id="cabBack" ${this.cabinet.hasBack ? 'checked' : ''}>
-              <span>Spate PFL / HDF 3mm</span>
+              <span>Spate HDF / PFL 3mm montat în falt</span>
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
               <input type="checkbox" id="cabPushOpen" ${this.cabinet.hasPushToOpen ? 'checked' : ''}>
-              <span>Pistoane Push-to-Open</span>
+              <span>Pistoane Push-to-Open (fără mânere)</span>
             </label>
             <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="checkbox" id="cabBrackets" ${this.cabinet.hasAngleBrackets ? 'checked' : ''}>
-              <span>Colțare & bride perete</span>
+              <input type="checkbox" id="cabLegs" ${this.cabinet.hasLegs ? 'checked' : ''}>
+              <span>Picioare reglabile H=100mm + plintă</span>
             </label>
           </div>
         </div>
@@ -241,62 +271,102 @@ export class SketcherStudio {
   bindEvents() {
     const canvas = this.container.querySelector('#sketchCanvas');
 
-    // Pointer Events pentru desenare fluidă cu degetul sau mouse-ul
-    canvas.addEventListener('pointerdown', (e) => this.handlePointerDown(e));
-    canvas.addEventListener('pointermove', (e) => this.handlePointerMove(e));
-    canvas.addEventListener('pointerup', (e) => this.handlePointerUp(e));
-    canvas.addEventListener('pointercancel', (e) => this.handlePointerUp(e));
+    // Drag and drop din paleta de componente
+    this.setupPaletteDragDrop();
 
-    // Schimbare unealtă
-    this.container.querySelectorAll('[data-tool]').forEach(btn => {
+    // Evenimente pe Canvas (Pointer)
+    canvas.addEventListener('pointerdown', (e) => this.handleCanvasPointerDown(e));
+    canvas.addEventListener('pointermove', (e) => this.handleCanvasPointerMove(e));
+    canvas.addEventListener('pointerup', (e) => this.handleCanvasPointerUp(e));
+    canvas.addEventListener('pointercancel', (e) => this.handleCanvasPointerUp(e));
+
+    // Moduri de vizualizare
+    const vmTech = this.container.querySelector('#vmTechBtn');
+    const vmInt = this.container.querySelector('#vmIntBtn');
+    const vmFac = this.container.querySelector('#vmFacBtn');
+
+    vmTech.addEventListener('click', () => {
+      this.viewMode = 'technical';
+      vmTech.classList.replace('ghost', 'acc');
+      vmInt.classList.replace('acc', 'ghost');
+      vmFac.classList.replace('acc', 'ghost');
+      this.redrawCanvas();
+    });
+
+    vmInt.addEventListener('click', () => {
+      this.viewMode = 'interior';
+      vmInt.classList.replace('ghost', 'acc');
+      vmTech.classList.replace('acc', 'ghost');
+      vmFac.classList.replace('acc', 'ghost');
+      this.redrawCanvas();
+    });
+
+    vmFac.addEventListener('click', () => {
+      this.viewMode = 'facade';
+      vmFac.classList.replace('ghost', 'acc');
+      vmTech.classList.replace('acc', 'ghost');
+      vmInt.classList.replace('acc', 'ghost');
+      this.redrawCanvas();
+    });
+
+    // Butoane acțiuni secundare
+    this.container.querySelectorAll('[data-action]').forEach(btn => {
       btn.addEventListener('click', () => {
-        this.selectedTool = btn.dataset.tool;
-        this.container.querySelectorAll('[data-tool]').forEach(b => b.classList.replace('acc', 'ghost'));
+        const action = btn.dataset.action;
+        this.selectedTool = action;
+        this.container.querySelectorAll('[data-action]').forEach(b => b.classList.replace('acc', 'ghost'));
+        this.container.querySelectorAll('.cad-item-card').forEach(c => c.classList.remove('active-source'));
         btn.classList.replace('ghost', 'acc');
-        this.updateToolHint();
-        this.selectedItem = null;
-        this.updateEditBox();
-        this.redrawCanvas();
+        if (action === 'eraser') {
+          this.setStatusText('🧹 Mod Radieră: Atinge orice piesă pentru a o șterge.');
+        } else {
+          this.setStatusText('👆 Mod Selectare: Atinge sau trage de piese direct pe ecran.');
+        }
       });
     });
 
-    // Zoom
-    this.container.querySelector('#sketchZoomInBtn').addEventListener('click', () => {
-      this.zoomScale = Math.min(2.5, this.zoomScale + 0.2);
-      this.redrawCanvas();
-    });
-    this.container.querySelector('#sketchZoomOutBtn').addEventListener('click', () => {
-      this.zoomScale = Math.max(0.6, this.zoomScale - 0.2);
-      this.redrawCanvas();
-    });
-    this.container.querySelector('#sketchZoomResetBtn').addEventListener('click', () => {
-      this.zoomScale = 1.0;
-      this.redrawCanvas();
-    });
-
-    // Golire interior (Corp gol)
-    this.container.querySelector('#resetToFrameBtn').addEventListener('click', () => {
+    // Preseturi
+    this.container.querySelector('#cadPresetEmpty').addEventListener('click', () => {
       this.cabinet.shelves = [];
       this.cabinet.dividers = [];
       this.cabinet.doors = [];
       this.cabinet.drawers = [];
       this.cabinet.rods = [];
+      this.cabinet.leds = [];
       this.selectedItem = null;
-      this.updateEditBox();
+      this.updateInspector();
       this.redrawCanvas();
-      this.showToast('Interiorul a fost golit! Ai libertate completă să desenezi de la zero.');
+      this.showToast('✨ Pânză goală încărcată! Adaugă elemente libere.');
     });
 
-    // Presets
-    this.container.querySelectorAll('#sketchPresets .chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.container.querySelectorAll('#sketchPresets .chip').forEach(b => b.classList.remove('on'));
-        btn.classList.add('on');
-        this.applyPreset(btn.dataset.preset);
-      });
+    this.container.querySelector('#cadPresetDressing').addEventListener('click', () => {
+      this.loadDressingPreset();
     });
 
-    // Actualizare cote carcasă
+    this.container.querySelector('#cadPresetKitchen').addEventListener('click', () => {
+      this.loadKitchenPreset();
+    });
+
+    this.container.querySelector('#cadPresetDresser').addEventListener('click', () => {
+      this.loadDresserPreset();
+    });
+
+    // Zoom & Centrare
+    this.container.querySelector('#cadZoomIn').addEventListener('click', () => {
+      this.zoomScale = Math.min(2.5, this.zoomScale + 0.2);
+      this.redrawCanvas();
+    });
+    this.container.querySelector('#cadZoomOut').addEventListener('click', () => {
+      this.zoomScale = Math.max(0.6, this.zoomScale - 0.2);
+      this.redrawCanvas();
+    });
+    this.container.querySelector('#cadZoomReset').addEventListener('click', () => {
+      this.zoomScale = 1.0;
+      this.panOffset = { x: 0, y: 0 };
+      this.redrawCanvas();
+    });
+
+    // Actualizare parametri carcasă
     const wIn = this.container.querySelector('#cabW');
     const hIn = this.container.querySelector('#cabH');
     const dIn = this.container.querySelector('#cabD');
@@ -304,7 +374,7 @@ export class SketcherStudio {
     const jIn = this.container.querySelector('#cabJoinery');
     const backCb = this.container.querySelector('#cabBack');
     const pushCb = this.container.querySelector('#cabPushOpen');
-    const bracCb = this.container.querySelector('#cabBrackets');
+    const legsCb = this.container.querySelector('#cabLegs');
 
     const updateCab = () => {
       this.cabinet.width = Math.max(200, parseInt(wIn.value) || 1000);
@@ -314,7 +384,7 @@ export class SketcherStudio {
       this.cabinet.joineryType = jIn.value;
       this.cabinet.hasBack = backCb.checked;
       this.cabinet.hasPushToOpen = pushCb.checked;
-      this.cabinet.hasAngleBrackets = bracCb.checked;
+      this.cabinet.hasLegs = legsCb.checked;
       this.normalizeCabinet();
       this.redrawCanvas();
     };
@@ -326,36 +396,7 @@ export class SketcherStudio {
     jIn.addEventListener('change', updateCab);
     backCb.addEventListener('change', updateCab);
     pushCb.addEventListener('change', updateCab);
-    bracCb.addEventListener('change', updateCab);
-
-    // Editare numerică selectare
-    const editApplyBtn = this.container.querySelector('#sketchEditApplyBtn');
-    const editDelBtn = this.container.querySelector('#sketchEditDelBtn');
-    const editInput = this.container.querySelector('#sketchEditInput');
-
-    editApplyBtn.addEventListener('click', () => {
-      if (!this.selectedItem) return;
-      const val = parseInt(editInput.value);
-      if (isNaN(val)) return;
-
-      if (this.selectedItem.type === 'shelf') {
-        const item = this.cabinet.shelves.find(s => s.id === this.selectedItem.id);
-        if (item) item.y = val;
-      } else if (this.selectedItem.type === 'divider') {
-        const item = this.cabinet.dividers.find(d => d.id === this.selectedItem.id);
-        if (item) item.x = val;
-      }
-      this.redrawCanvas();
-      this.updateEditBox();
-    });
-
-    editDelBtn.addEventListener('click', () => {
-      if (!this.selectedItem) return;
-      this.deleteItem(this.selectedItem);
-      this.selectedItem = null;
-      this.updateEditBox();
-      this.redrawCanvas();
-    });
+    legsCb.addEventListener('change', updateCab);
 
     // Buton Generare 3D
     this.container.querySelector('#extrude3dBtn').addEventListener('click', () => {
@@ -366,65 +407,508 @@ export class SketcherStudio {
     });
   }
 
-  updateToolHint() {
-    const statusMsg = this.container.querySelector('#sketchStatusMsg');
-    if (!statusMsg) return;
-    switch (this.selectedTool) {
-      case 'shelf':
-        statusMsg.textContent = '➖ Mod Poliță: Trasează linie orizontală sau apasă pe o nișă';
-        break;
-      case 'divider':
-        statusMsg.textContent = '┃ Mod Montant: Trasează linie verticală sau apasă pe o nișă';
-        break;
-      case 'door':
-        statusMsg.textContent = '🚪 Mod Ușă: Apasă pe orice nișă pentru a-i pune ușă batantă';
-        break;
-      case 'drawer':
-        statusMsg.textContent = '🗄️ Mod Sertar: Apasă pe orice nișă pentru a plasa un sertar';
-        break;
-      case 'rod':
-        statusMsg.textContent = '👔 Mod Bară Haine: Apasă pe o nișă pentru bară de umerașe';
-        break;
-      case 'drag':
-        statusMsg.textContent = '↔️ Mod Mutare: Trage cu degetul direct de polițe sau montanți';
-        break;
-      case 'select':
-        statusMsg.textContent = '👆 Mod Selectare: Apasă pe orice piesă pentru cota exactă';
-        break;
-      case 'eraser':
-        statusMsg.textContent = '🧹 Mod Radieră: Apasă pe orice piesă pentru a o șterge';
-        break;
-    }
+  setupPaletteDragDrop() {
+    const cards = this.container.querySelectorAll('.cad-item-card');
+    const canvas = this.container.querySelector('#sketchCanvas');
+
+    cards.forEach(card => {
+      const type = card.dataset.type;
+
+      // Pointer down pe card
+      card.addEventListener('pointerdown', (e) => {
+        card.setPointerCapture(e.pointerId);
+        this.paletteDragItem = CAD_PALETTE_ITEMS.find(p => p.type === type);
+
+        // Highlight card activ
+        cards.forEach(c => c.classList.remove('active-source'));
+        card.classList.add('active-source');
+
+        // Creem element ghost plutitor
+        if (!this.ghostEl) {
+          this.ghostEl = document.createElement('div');
+          this.ghostEl.className = 'cad-ghost';
+          document.body.appendChild(this.ghostEl);
+        }
+        this.ghostEl.innerHTML = `${this.paletteDragItem.icon} <span>${this.paletteDragItem.title}</span>`;
+        this.ghostEl.style.left = `${e.clientX}px`;
+        this.ghostEl.style.top = `${e.clientY}px`;
+        this.ghostEl.style.display = 'flex';
+
+        this.setStatusText(`Trage piesa peste corpul de mobilier și eliberează!`);
+      });
+
+      card.addEventListener('pointermove', (e) => {
+        if (!this.paletteDragItem || !this.ghostEl) return;
+        this.ghostEl.style.left = `${e.clientX}px`;
+        this.ghostEl.style.top = `${e.clientY}px`;
+
+        // Verificăm dacă suntem deasupra canvas-ului
+        const rect = canvas.getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          const px = (e.clientX - rect.left) * scaleX;
+          const py = (e.clientY - rect.top) * scaleY;
+          const bounds = this.getBoxBounds(canvas);
+          const { mmX, mmY } = this.pixelToMm(px, py, bounds);
+
+          this.dropTargetComp = this.findCompartmentAt(mmX, mmY);
+          this.redrawCanvas();
+        } else {
+          if (this.dropTargetComp) {
+            this.dropTargetComp = null;
+            this.redrawCanvas();
+          }
+        }
+      });
+
+      const handleEnd = (e) => {
+        if (!this.paletteDragItem) return;
+        const droppedType = this.paletteDragItem.type;
+        this.paletteDragItem = null;
+
+        if (this.ghostEl) {
+          this.ghostEl.remove();
+          this.ghostEl = null;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+        const wasOverCanvas = (e.clientX >= rect.left && e.clientX <= rect.right &&
+                               e.clientY >= rect.top && e.clientY <= rect.bottom);
+
+        if (wasOverCanvas && this.dropTargetComp) {
+          this.instantiateDroppedItem(droppedType, this.dropTargetComp);
+        } else if (!wasOverCanvas) {
+          // A fost doar un simplu tap pe card -> comută unealta activă pe acest tip
+          this.selectedTool = droppedType;
+          this.setStatusText(`Ai selectat: ${card.querySelector('.cad-item-title').textContent}. Atinge nișa unde vrei să o plasezi!`);
+        }
+
+        this.dropTargetComp = null;
+        this.redrawCanvas();
+      };
+
+      card.addEventListener('pointerup', handleEnd);
+      card.addEventListener('pointercancel', handleEnd);
+    });
   }
 
-  updateEditBox() {
-    const editRow = this.container.querySelector('#sketchEditRow');
-    const editLabel = this.container.querySelector('#sketchEditLabel');
-    const editInput = this.container.querySelector('#sketchEditInput');
-    if (!editRow || !editLabel || !editInput) return;
+  instantiateDroppedItem(type, comp) {
+    const T = this.cabinet.thickness;
 
-    if (!this.selectedItem) {
-      editRow.style.display = 'none';
+    if (type === 'shelf' || type === 'thickShelf') {
+      const shT = type === 'thickShelf' ? 28 : 18;
+      const y = Math.round((comp.y1 + comp.y2) / 20) * 10;
+      const newShelf = {
+        id: `sh_${Date.now()}`,
+        y,
+        x1: comp.x1,
+        x2: comp.x2,
+        thickness: shT,
+        material: shT === 28 ? 'Lemn Masiv Ranforsat 28mm' : 'PAL Melaminat 18mm',
+        joinery: this.cabinet.joineryType
+      };
+      this.cabinet.shelves.push(newShelf);
+      this.selectedItem = { type: 'shelf', id: newShelf.id, val: y, item: newShelf };
+      this.showToast(`Poliță montată la cota Y=${y}mm (L=${comp.x2 - comp.x1}mm)!`);
+
+    } else if (type === 'divider') {
+      const x = Math.round((comp.x1 + comp.x2) / 20) * 10;
+      const newDiv = {
+        id: `div_${Date.now()}`,
+        x,
+        y1: comp.y1,
+        y2: comp.y2,
+        thickness: T,
+        material: 'PAL Melaminat 18mm'
+      };
+      this.cabinet.dividers.push(newDiv);
+      this.selectedItem = { type: 'divider', id: newDiv.id, val: x, item: newDiv };
+      this.showToast(`Montant despărțitor montat la X=${x}mm (H=${comp.y2 - comp.y1}mm)!`);
+
+    } else if (type === 'door-left' || type === 'door-right' || type === 'door-double') {
+      const doorType = type === 'door-left' ? 'single-left' : (type === 'door-right' ? 'single-right' : 'double');
+      const newDoor = {
+        id: `door_${Date.now()}`,
+        x1: comp.x1,
+        x2: comp.x2,
+        y1: comp.y1,
+        y2: comp.y2,
+        type: doorType,
+        handle: 'bar'
+      };
+      this.cabinet.doors.push(newDoor);
+      this.selectedItem = { type: 'door', id: newDoor.id, item: newDoor };
+      this.showToast(`Ușă montată pe nișa ${comp.width}x${comp.height}mm!`);
+
+    } else if (type === 'drawer-std' || type === 'drawer-deep') {
+      const dH = type === 'drawer-deep' ? Math.min(comp.height, 280) : Math.min(comp.height, 160);
+      const newDrawer = {
+        id: `dw_${Date.now()}`,
+        x1: comp.x1,
+        x2: comp.x2,
+        y1: comp.y1,
+        y2: comp.y1 + dH,
+        height: dH,
+        slides: 'soft-close'
+      };
+      this.cabinet.drawers.push(newDrawer);
+      this.selectedItem = { type: 'drawer', id: newDrawer.id, item: newDrawer };
+      this.showToast(`Sertar montat (H=${dH}mm)!`);
+
+    } else if (type === 'drawer-triple') {
+      // Împarte nișa în 3 sertare egale
+      const totalH = comp.height - 12;
+      const eachH = Math.floor(totalH / 3);
+      for (let i = 0; i < 3; i++) {
+        const sy1 = comp.y1 + i * (eachH + 4);
+        this.cabinet.drawers.push({
+          id: `dw_${Date.now()}_${i}`,
+          x1: comp.x1,
+          x2: comp.x2,
+          y1: sy1,
+          y2: sy1 + eachH,
+          height: eachH,
+          slides: 'soft-close'
+        });
+      }
+      this.showToast(`Bloc de 3 sertare montat în nișă!`);
+
+    } else if (type === 'rod') {
+      const newRod = {
+        id: `rod_${Date.now()}`,
+        x1: comp.x1,
+        x2: comp.x2,
+        y: Math.max(comp.y1 + 100, comp.y2 - 60)
+      };
+      this.cabinet.rods.push(newRod);
+      this.selectedItem = { type: 'rod', id: newRod.id, item: newRod };
+      this.showToast(`Bară de haine umerașe montată!`);
+
+    } else if (type === 'led') {
+      const newLed = {
+        id: `led_${Date.now()}`,
+        x1: comp.x1,
+        x2: comp.x2,
+        y: comp.y2 - 12
+      };
+      this.cabinet.leds.push(newLed);
+      this.selectedItem = { type: 'led', id: newLed.id, item: newLed };
+      this.showToast(`Bandă LED montată în tavanul nișei!`);
+
+    } else if (type === 'legs') {
+      this.cabinet.hasLegs = true;
+      const legsCb = this.container.querySelector('#cabLegs');
+      if (legsCb) legsCb.checked = true;
+      this.showToast(`Picioare reglabile activate la baza dulapului!`);
+    }
+
+    this.updateInspector();
+  }
+
+  handleCanvasPointerDown(e) {
+    const canvas = this.container.querySelector('#sketchCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+
+    canvas.setPointerCapture(e.pointerId);
+    const bounds = this.getBoxBounds(canvas);
+    const { mmX, mmY } = this.pixelToMm(px, py, bounds);
+
+    // Dacă utilizatorul a selectat o unealtă din paletă și dă click pe canvas
+    const matchingPalette = CAD_PALETTE_ITEMS.find(p => p.type === this.selectedTool);
+    if (matchingPalette) {
+      const comp = this.findCompartmentAt(mmX, mmY);
+      if (comp) {
+        this.instantiateDroppedItem(matchingPalette.type, comp);
+        this.selectedTool = 'select';
+        this.container.querySelectorAll('.cad-item-card').forEach(c => c.classList.remove('active-source'));
+        this.redrawCanvas();
+        return;
+      }
+    }
+
+    if (this.selectedTool === 'eraser') {
+      const item = this.findItemNear(mmX, mmY);
+      if (item) {
+        this.deleteItem(item);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      }
       return;
     }
 
-    editRow.style.display = 'flex';
-    if (this.selectedItem.type === 'shelf') {
-      editLabel.textContent = `Poliță Y:`;
-      editInput.value = this.selectedItem.val;
-    } else if (this.selectedItem.type === 'divider') {
-      editLabel.textContent = `Montant X:`;
-      editInput.value = this.selectedItem.val;
-    } else if (this.selectedItem.type === 'door') {
-      editLabel.textContent = `Ușă (${this.selectedItem.item.type}):`;
-      editInput.value = Math.round(this.selectedItem.item.x2 - this.selectedItem.item.x1);
-    } else if (this.selectedItem.type === 'drawer') {
-      editLabel.textContent = `Sertar H:`;
-      editInput.value = Math.round(this.selectedItem.item.height || 200);
-    } else if (this.selectedItem.type === 'rod') {
-      editLabel.textContent = `Bară Y:`;
-      editInput.value = Math.round(this.selectedItem.item.y);
+    // Căutare piesă existentă pentru selectare și drag & drop direct pe canvas
+    const hitItem = this.findItemNear(mmX, mmY);
+    if (hitItem) {
+      this.selectedItem = hitItem;
+      this.draggingItem = hitItem;
+      this.dragStartPos = { mmX, mmY };
+      this.updateInspector();
+      this.redrawCanvas();
+      return;
     }
+
+    // Deselectare dacă a apăsat pe spațiu gol
+    this.selectedItem = null;
+    this.updateInspector();
+    this.redrawCanvas();
+  }
+
+  handleCanvasPointerMove(e) {
+    const canvas = this.container.querySelector('#sketchCanvas');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * scaleX;
+    const py = (e.clientY - rect.top) * scaleY;
+    const bounds = this.getBoxBounds(canvas);
+    const { mmX, mmY } = this.pixelToMm(px, py, bounds);
+
+    const coordsBadge = this.container.querySelector('#cadCoordsBadge');
+    if (coordsBadge) {
+      coordsBadge.textContent = `X: ${mmX} mm | Y: ${mmY} mm`;
+    }
+
+    if (this.draggingItem) {
+      // Glisare piesă direct pe ecran cu snap magnetic la pas de 32mm sau 10mm
+      const snapVal = Math.round((this.draggingItem.type === 'shelf' || this.draggingItem.type === 'rod' ? mmY : mmX) / 10) * 10;
+
+      if (this.draggingItem.type === 'shelf') {
+        const item = this.cabinet.shelves.find(s => s.id === this.draggingItem.id);
+        if (item && snapVal > 50 && snapVal < this.cabinet.height - 50) {
+          item.y = snapVal;
+          this.draggingItem.val = snapVal;
+        }
+      } else if (this.draggingItem.type === 'divider') {
+        const item = this.cabinet.dividers.find(d => d.id === this.draggingItem.id);
+        if (item && snapVal > 50 && snapVal < this.cabinet.width - 50) {
+          item.x = snapVal;
+          this.draggingItem.val = snapVal;
+        }
+      } else if (this.draggingItem.type === 'rod') {
+        const item = this.cabinet.rods.find(r => r.id === this.draggingItem.id);
+        if (item && snapVal > 100 && snapVal < this.cabinet.height - 50) {
+          item.y = snapVal;
+        }
+      }
+
+      this.updateInspector();
+      this.redrawCanvas();
+    }
+  }
+
+  handleCanvasPointerUp(e) {
+    if (this.draggingItem) {
+      this.draggingItem = null;
+      this.dragStartPos = null;
+      this.redrawCanvas();
+    }
+  }
+
+  updateInspector() {
+    const container = this.container.querySelector('#cadInspectorContainer');
+    if (!container) return;
+
+    if (!this.selectedItem) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    const { type, item } = this.selectedItem;
+
+    if (type === 'shelf') {
+      const sh = this.cabinet.shelves.find(s => s.id === item.id) || item;
+      const shW = Math.round(sh.x2 - sh.x1);
+      container.innerHTML = `
+        <div class="row between" style="margin-bottom:8px;">
+          <div>
+            <b style="color:var(--accent);font-size:14px;">➖ Poliță Orizontală</b>
+            <div class="muted small">Lățime utilă: ${shW} mm | Grosime: ${sh.thickness || 18} mm</div>
+          </div>
+          <button class="btn sm ghost" id="inspDelBtn" style="color:#d32f2f;">🗑️ Șterge</button>
+        </div>
+        <div class="row" style="gap:8px;align-items:center;">
+          <div class="grow">
+            <label class="f" style="margin-top:0;">Cota de montaj de la bază (Y):</label>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <button class="btn sm ghost" id="shYMinus50">-50</button>
+              <button class="btn sm ghost" id="shYMinus10">-10</button>
+              <input type="number" id="inspYInput" class="i" style="text-align:center;font-weight:bold;width:90px;" value="${sh.y}">
+              <button class="btn sm ghost" id="shYPlus10">+10</button>
+              <button class="btn sm ghost" id="shYPlus50">+50</button>
+            </div>
+          </div>
+          <div>
+            <label class="f" style="margin-top:0;">Acțiuni Rapide:</label>
+            <div style="display:flex;gap:4px;">
+              <button class="btn sm ghost" id="inspCenterBtn" title="Centrează polița în nișă">🎯 Centrează</button>
+              <button class="btn sm ghost" id="inspDupBtn" title="Creează o copie identică deasupra">+1 Copiază</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Handlers
+      container.querySelector('#inspYInput').addEventListener('change', (e) => {
+        sh.y = parseInt(e.target.value) || sh.y;
+        this.redrawCanvas();
+      });
+      container.querySelector('#shYMinus10').addEventListener('click', () => { sh.y -= 10; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#shYPlus10').addEventListener('click', () => { sh.y += 10; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#shYMinus50').addEventListener('click', () => { sh.y -= 50; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#shYPlus50').addEventListener('click', () => { sh.y += 50; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#inspCenterBtn').addEventListener('click', () => {
+        const comp = this.findCompartmentAt((sh.x1 + sh.x2) / 2, sh.y);
+        sh.y = Math.round((comp.y1 + comp.y2) / 20) * 10;
+        this.redrawCanvas();
+        this.updateInspector();
+      });
+      container.querySelector('#inspDupBtn').addEventListener('click', () => {
+        const newSh = { ...sh, id: `sh_${Date.now()}`, y: Math.min(this.cabinet.height - 60, sh.y + 250) };
+        this.cabinet.shelves.push(newSh);
+        this.selectedItem = { type: 'shelf', id: newSh.id, val: newSh.y, item: newSh };
+        this.redrawCanvas();
+        this.updateInspector();
+      });
+      container.querySelector('#inspDelBtn').addEventListener('click', () => {
+        this.deleteItem(this.selectedItem);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      });
+
+    } else if (type === 'divider') {
+      const dv = this.cabinet.dividers.find(d => d.id === item.id) || item;
+      const dvH = Math.round(dv.y2 - dv.y1);
+      container.innerHTML = `
+        <div class="row between" style="margin-bottom:8px;">
+          <div>
+            <b style="color:var(--accent);font-size:14px;">┃ Montant Vertical Despărțitor</b>
+            <div class="muted small">Înălțime utilă: ${dvH} mm | Grosime: ${dv.thickness || 18} mm</div>
+          </div>
+          <button class="btn sm ghost" id="inspDelBtn" style="color:#d32f2f;">🗑️ Șterge</button>
+        </div>
+        <div class="row" style="gap:8px;align-items:center;">
+          <div class="grow">
+            <label class="f" style="margin-top:0;">Poziție orizontală de la stânga (X):</label>
+            <div style="display:flex;gap:4px;align-items:center;">
+              <button class="btn sm ghost" id="dvXMinus50">-50</button>
+              <button class="btn sm ghost" id="dvXMinus10">-10</button>
+              <input type="number" id="inspXInput" class="i" style="text-align:center;font-weight:bold;width:90px;" value="${dv.x}">
+              <button class="btn sm ghost" id="dvXPlus10">+10</button>
+              <button class="btn sm ghost" id="dvXPlus50">+50</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.querySelector('#inspXInput').addEventListener('change', (e) => {
+        dv.x = parseInt(e.target.value) || dv.x;
+        this.redrawCanvas();
+      });
+      container.querySelector('#dvXMinus10').addEventListener('click', () => { dv.x -= 10; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#dvXPlus10').addEventListener('click', () => { dv.x += 10; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#dvXMinus50').addEventListener('click', () => { dv.x -= 50; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#dvXPlus50').addEventListener('click', () => { dv.x += 50; this.redrawCanvas(); this.updateInspector(); });
+      container.querySelector('#inspDelBtn').addEventListener('click', () => {
+        this.deleteItem(this.selectedItem);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      });
+
+    } else if (type === 'door') {
+      const dr = this.cabinet.doors.find(d => d.id === item.id) || item;
+      const drW = Math.round(dr.x2 - dr.x1);
+      const drH = Math.round(dr.y2 - dr.y1);
+      container.innerHTML = `
+        <div class="row between" style="margin-bottom:8px;">
+          <div>
+            <b style="color:var(--accent);font-size:14px;">🚪 Ușă Batantă (${dr.type.toUpperCase()})</b>
+            <div class="muted small">Lățime: ${drW} mm | Înălțime: ${drH} mm</div>
+          </div>
+          <button class="btn sm ghost" id="inspDelBtn" style="color:#d32f2f;">🗑️ Șterge</button>
+        </div>
+        <div class="row" style="gap:8px;">
+          <div class="grow">
+            <label class="f" style="margin-top:0;">Tip Deschidere:</label>
+            <select id="inspDoorType" class="i">
+              <option value="single-left" ${dr.type === 'single-left' ? 'selected' : ''}>Ușă Simplă (Balamale Stânga)</option>
+              <option value="single-right" ${dr.type === 'single-right' ? 'selected' : ''}>Ușă Simplă (Balamale Dreapta)</option>
+              <option value="double" ${dr.type === 'double' ? 'selected' : ''}>Uși Duble (Pereche)</option>
+            </select>
+          </div>
+        </div>
+      `;
+
+      container.querySelector('#inspDoorType').addEventListener('change', (e) => {
+        dr.type = e.target.value;
+        this.redrawCanvas();
+      });
+      container.querySelector('#inspDelBtn').addEventListener('click', () => {
+        this.deleteItem(this.selectedItem);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      });
+
+    } else if (type === 'drawer') {
+      const dw = this.cabinet.drawers.find(d => d.id === item.id) || item;
+      const dwW = Math.round(dw.x2 - dw.x1);
+      container.innerHTML = `
+        <div class="row between" style="margin-bottom:8px;">
+          <div>
+            <b style="color:var(--accent);font-size:14px;">🗄️ Casetă Sertar</b>
+            <div class="muted small">Lățime: ${dwW} mm | Înălțime front: ${dw.height || 180} mm</div>
+          </div>
+          <button class="btn sm ghost" id="inspDelBtn" style="color:#d32f2f;">🗑️ Șterge</button>
+        </div>
+        <div class="row" style="gap:8px;">
+          <div class="grow">
+            <label class="f" style="margin-top:0;">Înălțime Front (mm):</label>
+            <input type="number" id="inspDwHeight" class="i" value="${dw.height || 180}" step="20">
+          </div>
+        </div>
+      `;
+
+      container.querySelector('#inspDwHeight').addEventListener('change', (e) => {
+        dw.height = parseInt(e.target.value) || dw.height;
+        dw.y2 = dw.y1 + dw.height;
+        this.redrawCanvas();
+      });
+      container.querySelector('#inspDelBtn').addEventListener('click', () => {
+        this.deleteItem(this.selectedItem);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      });
+
+    } else {
+      container.innerHTML = `
+        <div class="row between">
+          <div><b>${type.toUpperCase()}</b></div>
+          <button class="btn sm ghost" id="inspDelBtn" style="color:#d32f2f;">🗑️ Șterge</button>
+        </div>
+      `;
+      container.querySelector('#inspDelBtn').addEventListener('click', () => {
+        this.deleteItem(this.selectedItem);
+        this.selectedItem = null;
+        this.updateInspector();
+        this.redrawCanvas();
+      });
+    }
+  }
+
+  setStatusText(txt) {
+    const el = this.container.querySelector('#cadStatusText');
+    if (el) el.textContent = txt;
   }
 
   showToast(msg) {
@@ -432,132 +916,8 @@ export class SketcherStudio {
     if (toast) {
       toast.textContent = msg;
       toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2500);
+      setTimeout(() => toast.classList.remove('show'), 2400);
     }
-  }
-
-  applyPreset(preset) {
-    const T = this.cabinet.thickness || 18;
-
-    if (preset === 'empty') {
-      this.cabinet.width = 1000;
-      this.cabinet.height = 1800;
-      this.cabinet.depth = 500;
-      this.cabinet.shelves = [];
-      this.cabinet.dividers = [];
-      this.cabinet.doors = [];
-      this.cabinet.drawers = [];
-      this.cabinet.rods = [];
-      this.showToast('Pânză liberă încărcată!');
-    } else if (preset === 'dressingAsym') {
-      this.cabinet.width = 1000;
-      this.cabinet.height = 1800;
-      this.cabinet.depth = 500;
-      this.cabinet.shelves = [
-        { id: 's1', y: 400, x1: 500, x2: 982 },
-        { id: 's2', y: 800, x1: 500, x2: 982 },
-        { id: 's3', y: 1200, x1: 500, x2: 982 },
-        { id: 's4', y: 1400, x1: 18, x2: 982 }
-      ];
-      this.cabinet.dividers = [
-        { id: 'd1', x: 500, y1: 18, y2: 1400 }
-      ];
-      this.cabinet.doors = [
-        { id: 'door1', x1: 18, x2: 500, y1: 18, y2: 1400, type: 'single-left' }
-      ];
-      this.cabinet.drawers = [
-        { id: 'dw1', x1: 500, x2: 982, y1: 18, y2: 200, height: 180 }
-      ];
-      this.cabinet.rods = [
-        { id: 'rod1', x1: 18, x2: 500, y: 1340 }
-      ];
-    } else if (preset === 'wardrobe2') {
-      this.cabinet.width = 800;
-      this.cabinet.height = 1200;
-      this.cabinet.depth = 450;
-      this.cabinet.shelves = [
-        { id: 's1', y: 400, x1: 18, x2: 782 },
-        { id: 's2', y: 800, x1: 18, x2: 782 }
-      ];
-      this.cabinet.dividers = [];
-      this.cabinet.doors = [
-        { id: 'door1', x1: 18, x2: 782, y1: 18, y2: 1182, type: 'double' }
-      ];
-      this.cabinet.drawers = [];
-      this.cabinet.rods = [];
-    } else if (preset === 'dresser4') {
-      this.cabinet.width = 900;
-      this.cabinet.height = 850;
-      this.cabinet.depth = 450;
-      this.cabinet.shelves = [
-        { id: 's1', y: 210, x1: 18, x2: 882 },
-        { id: 's2', y: 420, x1: 18, x2: 882 },
-        { id: 's3', y: 630, x1: 18, x2: 882 }
-      ];
-      this.cabinet.dividers = [];
-      this.cabinet.doors = [];
-      this.cabinet.drawers = [
-        { id: 'dw1', x1: 18, x2: 882, y1: 18, y2: 210, height: 190 },
-        { id: 'dw2', x1: 18, x2: 882, y1: 210, y2: 420, height: 190 },
-        { id: 'dw3', x1: 18, x2: 882, y1: 420, y2: 630, height: 190 },
-        { id: 'dw4', x1: 18, x2: 882, y1: 630, y2: 832, height: 190 }
-      ];
-      this.cabinet.rods = [];
-    } else if (preset === 'kitchenUnit') {
-      this.cabinet.width = 600;
-      this.cabinet.height = 720;
-      this.cabinet.depth = 320;
-      this.cabinet.shelves = [
-        { id: 's1', y: 360, x1: 18, x2: 582 }
-      ];
-      this.cabinet.dividers = [];
-      this.cabinet.doors = [
-        { id: 'door1', x1: 18, x2: 582, y1: 18, y2: 702, type: 'single-left' }
-      ];
-      this.cabinet.drawers = [];
-      this.cabinet.rods = [];
-    } else if (preset === 'openBookshelf') {
-      this.cabinet.width = 750;
-      this.cabinet.height = 1500;
-      this.cabinet.depth = 280;
-      this.cabinet.shelves = [
-        { id: 's1', y: 375, x1: 18, x2: 732 },
-        { id: 's2', y: 750, x1: 18, x2: 732 },
-        { id: 's3', y: 1125, x1: 18, x2: 732 }
-      ];
-      this.cabinet.dividers = [];
-      this.cabinet.doors = [];
-      this.cabinet.drawers = [];
-      this.cabinet.rods = [];
-    }
-
-    this.container.querySelector('#cabW').value = this.cabinet.width;
-    this.container.querySelector('#cabH').value = this.cabinet.height;
-    this.container.querySelector('#cabD').value = this.cabinet.depth;
-    this.selectedItem = null;
-    this.updateEditBox();
-    this.redrawCanvas();
-  }
-
-  getBoxBounds(canvas) {
-    const margin = 44;
-    const maxW = canvas.width - margin * 2;
-    const maxH = canvas.height - margin * 2;
-
-    const baseScale = Math.min(maxW / this.cabinet.width, maxH / this.cabinet.height) * 0.94;
-    const scale = baseScale * (this.zoomScale || 1.0);
-    const w = this.cabinet.width * scale;
-    const h = this.cabinet.height * scale;
-    const x = (canvas.width - w) / 2 + this.panOffset.x;
-    const y = (canvas.height - h) / 2 + 10 + this.panOffset.y;
-
-    return { x, y, w, h, scale };
-  }
-
-  pixelToMm(px, py, bounds) {
-    const mmX = (px - bounds.x) / bounds.scale;
-    const mmY = (bounds.y + bounds.h - py) / bounds.scale;
-    return { mmX: Math.round(mmX), mmY: Math.round(mmY) };
   }
 
   findCompartmentAt(mmX, mmY) {
@@ -604,37 +964,32 @@ export class SketcherStudio {
   }
 
   findItemNear(mmX, mmY) {
-    const tol = 30; // 30 mm toleranță hit test
+    const tol = 30;
 
-    // 1. Polițe
     for (const sh of this.cabinet.shelves) {
       if (Math.abs(mmY - sh.y) < tol && mmX >= (sh.x1 - 20) && mmX <= (sh.x2 + 20)) {
         return { type: 'shelf', id: sh.id, val: sh.y, item: sh };
       }
     }
 
-    // 2. Montanți
     for (const dv of this.cabinet.dividers) {
       if (Math.abs(mmX - dv.x) < tol && mmY >= (dv.y1 - 20) && mmY <= (dv.y2 + 20)) {
         return { type: 'divider', id: dv.id, val: dv.x, item: dv };
       }
     }
 
-    // 3. Bare haine
     for (const rd of this.cabinet.rods) {
       if (Math.abs(mmY - rd.y) < tol && mmX >= rd.x1 && mmX <= rd.x2) {
         return { type: 'rod', id: rd.id, val: rd.y, item: rd };
       }
     }
 
-    // 4. Sertare
     for (const dw of this.cabinet.drawers) {
       if (mmX >= dw.x1 && mmX <= dw.x2 && mmY >= dw.y1 && mmY <= dw.y2) {
         return { type: 'drawer', id: dw.id, val: dw.y1, item: dw };
       }
     }
 
-    // 5. Uși
     for (const dr of this.cabinet.doors) {
       if (mmX >= dr.x1 && mmX <= dr.x2 && mmY >= dr.y1 && mmY <= dr.y2) {
         return { type: 'door', id: dr.id, val: dr.y1, item: dr };
@@ -648,262 +1003,127 @@ export class SketcherStudio {
     if (!found) return;
     if (found.type === 'shelf') {
       this.cabinet.shelves = this.cabinet.shelves.filter(s => s.id !== found.id);
-      this.showToast(`Polița a fost ștearsă.`);
+      this.showToast('Polița a fost ștearsă.');
     } else if (found.type === 'divider') {
       this.cabinet.dividers = this.cabinet.dividers.filter(d => d.id !== found.id);
-      this.showToast(`Montantul a fost șters.`);
+      this.showToast('Montantul a fost șters.');
     } else if (found.type === 'door') {
       this.cabinet.doors = this.cabinet.doors.filter(d => d.id !== found.id);
-      this.showToast(`Ușa a fost ștearsă.`);
+      this.showToast('Ușa a fost ștearsă.');
     } else if (found.type === 'drawer') {
       this.cabinet.drawers = this.cabinet.drawers.filter(d => d.id !== found.id);
-      this.showToast(`Sertarul a fost șters.`);
+      this.showToast('Sertarul a fost șters.');
     } else if (found.type === 'rod') {
       this.cabinet.rods = this.cabinet.rods.filter(r => r.id !== found.id);
-      this.showToast(`Bara de haine a fost ștearsă.`);
+      this.showToast('Bara a fost ștearsă.');
+    } else if (found.type === 'led') {
+      this.cabinet.leds = this.cabinet.leds.filter(l => l.id !== found.id);
+      this.showToast('Banda LED a fost ștearsă.');
     }
   }
 
-  handlePointerDown(e) {
-    const canvas = this.container.querySelector('#sketchCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const px = (e.clientX - rect.left) * scaleX;
-    const py = (e.clientY - rect.top) * scaleY;
+  getBoxBounds(canvas) {
+    const margin = 44;
+    const maxW = canvas.width - margin * 2;
+    const maxH = canvas.height - margin * 2;
 
-    canvas.setPointerCapture(e.pointerId);
-    const bounds = this.getBoxBounds(canvas);
-    const { mmX, mmY } = this.pixelToMm(px, py, bounds);
+    const baseScale = Math.min(maxW / this.cabinet.width, maxH / this.cabinet.height) * 0.94;
+    const scale = baseScale * (this.zoomScale || 1.0);
+    const w = this.cabinet.width * scale;
+    const h = this.cabinet.height * scale;
+    const x = (canvas.width - w) / 2 + this.panOffset.x;
+    const y = (canvas.height - h) / 2 + 10 + this.panOffset.y;
 
-    // Verifică limite corp
-    if (mmX < -40 || mmX > this.cabinet.width + 40 || mmY < -40 || mmY > this.cabinet.height + 40) {
-      return;
-    }
-
-    if (this.selectedTool === 'eraser') {
-      const item = this.findItemNear(mmX, mmY);
-      if (item) {
-        this.deleteItem(item);
-        this.selectedItem = null;
-        this.updateEditBox();
-        this.redrawCanvas();
-      }
-      return;
-    }
-
-    if (this.selectedTool === 'select') {
-      const item = this.findItemNear(mmX, mmY);
-      this.selectedItem = item;
-      this.updateEditBox();
-      this.redrawCanvas();
-      return;
-    }
-
-    if (this.selectedTool === 'drag') {
-      const item = this.findItemNear(mmX, mmY);
-      if (item && (item.type === 'shelf' || item.type === 'divider')) {
-        this.draggingItem = item;
-        this.dragStartPos = { mmX, mmY };
-      }
-      return;
-    }
-
-    // Trasare activă cu degetul sau cursorul
-    this.isDrawing = true;
-    this.drawingStroke = {
-      startPx: { x: px, y: py },
-      currPx: { x: px, y: py },
-      startMm: { mmX, mmY },
-      currMm: { mmX, mmY }
-    };
+    return { x, y, w, h, scale };
   }
 
-  handlePointerMove(e) {
-    const canvas = this.container.querySelector('#sketchCanvas');
-    if (!this.isDrawing && !this.draggingItem) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const px = (e.clientX - rect.left) * scaleX;
-    const py = (e.clientY - rect.top) * scaleY;
-    const bounds = this.getBoxBounds(canvas);
-    const { mmX, mmY } = this.pixelToMm(px, py, bounds);
-
-    if (this.draggingItem) {
-      // Mută elementul selectat în trepte de 10mm
-      const snapVal = Math.round(this.draggingItem.type === 'shelf' ? mmY : mmX / 10) * 10;
-      if (this.draggingItem.type === 'shelf') {
-        const item = this.cabinet.shelves.find(s => s.id === this.draggingItem.id);
-        if (item && snapVal > 60 && snapVal < this.cabinet.height - 60) {
-          item.y = snapVal;
-          this.draggingItem.val = snapVal;
-        }
-      } else if (this.draggingItem.type === 'divider') {
-        const item = this.cabinet.dividers.find(d => d.id === this.draggingItem.id);
-        if (item && snapVal > 60 && snapVal < this.cabinet.width - 60) {
-          item.x = snapVal;
-          this.draggingItem.val = snapVal;
-        }
-      }
-      this.updateEditBox();
-      this.redrawCanvas();
-      return;
-    }
-
-    if (this.isDrawing && this.drawingStroke) {
-      this.drawingStroke.currPx = { x: px, y: py };
-      this.drawingStroke.currMm = { mmX, mmY };
-      this.redrawCanvas();
-    }
+  pixelToMm(px, py, bounds) {
+    const mmX = (px - bounds.x) / bounds.scale;
+    const mmY = (bounds.y + bounds.h - py) / bounds.scale;
+    return { mmX: Math.round(mmX), mmY: Math.round(mmY) };
   }
 
-  handlePointerUp(e) {
-    if (this.draggingItem) {
-      this.draggingItem = null;
-      this.dragStartPos = null;
-      this.redrawCanvas();
-      return;
-    }
-
-    if (!this.isDrawing || !this.drawingStroke) return;
-    this.isDrawing = false;
-
-    const { startMm, currMm, startPx, currPx } = this.drawingStroke;
-    this.drawingStroke = null;
-
-    const dx = Math.abs(currPx.x - startPx.x);
-    const dy = Math.abs(currPx.y - startPx.y);
-    const isDrag = dx > 20 || dy > 20;
-
-    const comp = this.findCompartmentAt(startMm.mmX, startMm.mmY);
-
-    if (this.selectedTool === 'shelf') {
-      let y = Math.round(startMm.mmY / 10) * 10;
-      let x1 = comp.x1;
-      let x2 = comp.x2;
-
-      // Dacă utilizatorul a trasat explicit o linie orizontală lungă
-      if (isDrag && dx > dy) {
-        y = Math.round((startMm.mmY + currMm.mmY) / 20) * 10;
-        const dragMinX = Math.min(startMm.mmX, currMm.mmX);
-        const dragMaxX = Math.max(startMm.mmX, currMm.mmX);
-        // Snap la margini/montanți
-        x1 = Math.abs(dragMinX - comp.x1) < 80 ? comp.x1 : dragMinX;
-        x2 = Math.abs(dragMaxX - comp.x2) < 80 ? comp.x2 : dragMaxX;
-      }
-
-      if (y > 40 && y < this.cabinet.height - 40 && x2 - x1 >= 40) {
-        const newShelf = {
-          id: `sh_${Date.now()}`,
-          y,
-          x1,
-          x2
-        };
-        this.cabinet.shelves.push(newShelf);
-        this.selectedItem = { type: 'shelf', id: newShelf.id, val: y, item: newShelf };
-        this.showToast(`Poliță adăugată la Y=${y}mm (L=${x2 - x1}mm)!`);
-      }
-    } else if (this.selectedTool === 'divider') {
-      let x = Math.round(startMm.mmX / 10) * 10;
-      let y1 = comp.y1;
-      let y2 = comp.y2;
-
-      if (isDrag && dy > dx) {
-        x = Math.round((startMm.mmX + currMm.mmX) / 20) * 10;
-        const dragMinY = Math.min(startMm.mmY, currMm.mmY);
-        const dragMaxY = Math.max(startMm.mmY, currMm.mmY);
-        y1 = Math.abs(dragMinY - comp.y1) < 80 ? comp.y1 : dragMinY;
-        y2 = Math.abs(dragMaxY - comp.y2) < 80 ? comp.y2 : dragMaxY;
-      }
-
-      if (x > 40 && x < this.cabinet.width - 40 && y2 - y1 >= 40) {
-        const newDiv = {
-          id: `div_${Date.now()}`,
-          x,
-          y1,
-          y2
-        };
-        this.cabinet.dividers.push(newDiv);
-        this.selectedItem = { type: 'divider', id: newDiv.id, val: x, item: newDiv };
-        this.showToast(`Montant adăugat la X=${x}mm (H=${y2 - y1}mm)!`);
-      }
-    } else if (this.selectedTool === 'door') {
-      // Toggle ușă pe compartimentul apăsat
-      const existingDoorIdx = this.cabinet.doors.findIndex(d =>
-        Math.abs(d.x1 - comp.x1) < 25 && Math.abs(d.x2 - comp.x2) < 25 &&
-        Math.abs(d.y1 - comp.y1) < 25 && Math.abs(d.y2 - comp.y2) < 25
-      );
-
-      if (existingDoorIdx >= 0) {
-        const currentType = this.cabinet.doors[existingDoorIdx].type;
-        if (currentType === 'single-left') {
-          this.cabinet.doors[existingDoorIdx].type = 'single-right';
-          this.showToast('Ușă schimbată: Deschidere Dreapta');
-        } else if (currentType === 'single-right') {
-          this.cabinet.doors[existingDoorIdx].type = 'double';
-          this.showToast('Uși schimbate: 2 Uși Duble');
-        } else {
-          this.cabinet.doors.splice(existingDoorIdx, 1);
-          this.showToast('Ușă eliminată!');
-        }
-      } else {
-        const newDoor = {
-          id: `door_${Date.now()}`,
-          x1: comp.x1,
-          x2: comp.x2,
-          y1: comp.y1,
-          y2: comp.y2,
-          type: comp.width > 550 ? 'double' : 'single-left'
-        };
-        this.cabinet.doors.push(newDoor);
-        this.showToast(`Ușă montată pe nișa ${comp.width}x${comp.height}mm!`);
-      }
-    } else if (this.selectedTool === 'drawer') {
-      const existingDrawerIdx = this.cabinet.drawers.findIndex(d =>
-        Math.abs(d.x1 - comp.x1) < 25 && Math.abs(d.x2 - comp.x2) < 25 &&
-        Math.abs(d.y1 - comp.y1) < 25
-      );
-
-      if (existingDrawerIdx >= 0) {
-        this.cabinet.drawers.splice(existingDrawerIdx, 1);
-        this.showToast('Sertar eliminat!');
-      } else {
-        const dH = Math.min(220, comp.height);
-        const newDrawer = {
-          id: `dw_${Date.now()}`,
-          x1: comp.x1,
-          x2: comp.x2,
-          y1: comp.y1,
-          y2: comp.y1 + dH,
-          height: dH
-        };
-        this.cabinet.drawers.push(newDrawer);
-        this.showToast(`Sertar montat (H=${dH}mm)!`);
-      }
-    } else if (this.selectedTool === 'rod') {
-      const existingRodIdx = this.cabinet.rods.findIndex(r =>
-        Math.abs(r.x1 - comp.x1) < 25 && Math.abs(r.x2 - comp.x2) < 25
-      );
-
-      if (existingRodIdx >= 0) {
-        this.cabinet.rods.splice(existingRodIdx, 1);
-        this.showToast('Bară haine eliminată!');
-      } else {
-        const newRod = {
-          id: `rod_${Date.now()}`,
-          x1: comp.x1,
-          x2: comp.x2,
-          y: Math.max(comp.y1 + 100, comp.y2 - 60)
-        };
-        this.cabinet.rods.push(newRod);
-        this.showToast('Bară de umerașe montată!');
-      }
-    }
-
-    this.updateEditBox();
+  loadDressingPreset() {
+    this.cabinet.width = 1200;
+    this.cabinet.height = 2000;
+    this.cabinet.depth = 550;
+    this.cabinet.shelves = [
+      { id: 's1', y: 400, x1: 600, x2: 1182, thickness: 18 },
+      { id: 's2', y: 800, x1: 600, x2: 1182, thickness: 18 },
+      { id: 's3', y: 1200, x1: 600, x2: 1182, thickness: 18 },
+      { id: 's4', y: 1600, x1: 18, x2: 1182, thickness: 18 }
+    ];
+    this.cabinet.dividers = [
+      { id: 'd1', x: 600, y1: 18, y2: 1600, thickness: 18 }
+    ];
+    this.cabinet.doors = [
+      { id: 'door1', x1: 18, x2: 600, y1: 18, y2: 1600, type: 'single-left', handle: 'bar' }
+    ];
+    this.cabinet.drawers = [
+      { id: 'dw1', x1: 600, x2: 1182, y1: 18, y2: 200, height: 180 }
+    ];
+    this.cabinet.rods = [
+      { id: 'rod1', x1: 18, x2: 600, y: 1540 }
+    ];
+    this.cabinet.leds = [];
+    this.container.querySelector('#cabW').value = 1200;
+    this.container.querySelector('#cabH').value = 2000;
+    this.container.querySelector('#cabD').value = 550;
+    this.selectedItem = null;
+    this.updateInspector();
     this.redrawCanvas();
+    this.showToast('👗 Dressing Asimetric încărcat!');
+  }
+
+  loadKitchenPreset() {
+    this.cabinet.width = 600;
+    this.cabinet.height = 720;
+    this.cabinet.depth = 330;
+    this.cabinet.shelves = [
+      { id: 's1', y: 360, x1: 18, x2: 582, thickness: 18 }
+    ];
+    this.cabinet.dividers = [];
+    this.cabinet.doors = [
+      { id: 'door1', x1: 18, x2: 582, y1: 18, y2: 702, type: 'single-left', handle: 'bar' }
+    ];
+    this.cabinet.drawers = [];
+    this.cabinet.rods = [];
+    this.cabinet.leds = [{ id: 'led1', x1: 18, x2: 582, y: 708 }];
+    this.container.querySelector('#cabW').value = 600;
+    this.container.querySelector('#cabH').value = 720;
+    this.container.querySelector('#cabD').value = 330;
+    this.selectedItem = null;
+    this.updateInspector();
+    this.redrawCanvas();
+    this.showToast('🍽️ Corp bucătărie suspendat încărcat!');
+  }
+
+  loadDresserPreset() {
+    this.cabinet.width = 900;
+    this.cabinet.height = 850;
+    this.cabinet.depth = 450;
+    this.cabinet.shelves = [
+      { id: 's1', y: 210, x1: 18, x2: 882, thickness: 18 },
+      { id: 's2', y: 420, x1: 18, x2: 882, thickness: 18 },
+      { id: 's3', y: 630, x1: 18, x2: 882, thickness: 18 }
+    ];
+    this.cabinet.dividers = [];
+    this.cabinet.doors = [];
+    this.cabinet.drawers = [
+      { id: 'dw1', x1: 18, x2: 882, y1: 18, y2: 210, height: 190 },
+      { id: 'dw2', x1: 18, x2: 882, y1: 210, y2: 420, height: 190 },
+      { id: 'dw3', x1: 18, x2: 882, y1: 420, y2: 630, height: 190 },
+      { id: 'dw4', x1: 18, x2: 882, y1: 630, y2: 832, height: 190 }
+    ];
+    this.cabinet.rods = [];
+    this.cabinet.leds = [];
+    this.container.querySelector('#cabW').value = 900;
+    this.container.querySelector('#cabH').value = 850;
+    this.container.querySelector('#cabD').value = 450;
+    this.selectedItem = null;
+    this.updateInspector();
+    this.redrawCanvas();
+    this.showToast('🗄️ Comodă cu 4 sertare încărcată!');
   }
 
   redrawCanvas() {
@@ -914,11 +1134,11 @@ export class SketcherStudio {
     const { x, y, w, h, scale } = bounds;
 
     // Clear fundal
-    ctx.fillStyle = '#faf8f5';
+    ctx.fillStyle = '#fbf9f6';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Grid milimetric fin CAD
-    ctx.strokeStyle = '#f1e9dd';
+    // Grid milimetric tehnic fin
+    ctx.strokeStyle = '#efe7db';
     ctx.lineWidth = 1;
     for (let gx = 0; gx < canvas.width; gx += 20) {
       ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvas.height); ctx.stroke();
@@ -930,15 +1150,15 @@ export class SketcherStudio {
     const T = this.cabinet.thickness;
     const Tpx = Math.max(3, T * scale);
 
-    // 1. Spate PFL dacă este activ
+    // 1. Spate HDF dacă este activ
     if (this.cabinet.hasBack) {
-      ctx.fillStyle = '#f5ede3';
+      ctx.fillStyle = '#f3ebe0';
       ctx.fillRect(x + Tpx, y + Tpx, w - 2 * Tpx, h - 2 * Tpx);
     }
 
-    // 2. Carcasa Exterioară (Laterale, Capac, Bază)
+    // 2. Carcasă Exterioară (Laterale, Capac, Bază)
     ctx.fillStyle = '#ebd8c2';
-    ctx.strokeStyle = '#322316';
+    ctx.strokeStyle = '#2b2118';
     ctx.lineWidth = 2;
 
     // Laterală Stânga
@@ -957,7 +1177,19 @@ export class SketcherStudio {
     ctx.fillRect(x + Tpx, y + h - Tpx, w - 2 * Tpx, Tpx);
     ctx.strokeRect(x + Tpx, y + h - Tpx, w - 2 * Tpx, Tpx);
 
-    // 3. Montanți Verticali Despărțitori
+    // Picioare reglabile jos
+    if (this.cabinet.hasLegs) {
+      ctx.fillStyle = '#37474f';
+      const legW = 16 * scale;
+      const legH = 22 * scale;
+      ctx.fillRect(x + 15 * scale, y + h, legW, legH);
+      ctx.fillRect(x + w - 15 * scale - legW, y + h, legW, legH);
+      if (this.cabinet.width > 900) {
+        ctx.fillRect(x + w / 2 - legW / 2, y + h, legW, legH);
+      }
+    }
+
+    // 3. Montanți Verticali
     (this.cabinet.dividers || []).forEach(dv => {
       const isSel = this.selectedItem && this.selectedItem.id === dv.id;
       const px = x + dv.x * scale;
@@ -966,13 +1198,13 @@ export class SketcherStudio {
       const pH = Math.max(4, py2 - py1);
 
       ctx.fillStyle = isSel ? '#ff9800' : '#ebd8c2';
-      ctx.strokeStyle = isSel ? '#d84315' : '#322316';
+      ctx.strokeStyle = isSel ? '#d84315' : '#2b2118';
       ctx.lineWidth = isSel ? 3 : 2;
 
       ctx.fillRect(px - Tpx / 2, py1, Tpx, pH);
       ctx.strokeRect(px - Tpx / 2, py1, Tpx, pH);
 
-      // Etichetă cotă X
+      // Cotă X
       ctx.font = isSel ? 'bold 11px monospace' : '9px monospace';
       ctx.fillStyle = isSel ? '#d84315' : '#1976d2';
       ctx.textAlign = 'center';
@@ -986,153 +1218,161 @@ export class SketcherStudio {
       const px1 = x + (sh.x1 != null ? sh.x1 : T) * scale;
       const px2 = x + (sh.x2 != null ? sh.x2 : this.cabinet.width - T) * scale;
       const pW = Math.max(4, px2 - px1);
+      const sTpx = Math.max(3, (sh.thickness || T) * scale);
 
-      ctx.fillStyle = isSel ? '#ff9800' : '#dfc9b0';
-      ctx.strokeStyle = isSel ? '#d84315' : '#322316';
+      ctx.fillStyle = isSel ? '#ff9800' : (sh.thickness > 22 ? '#d7be9f' : '#dfc9b0');
+      ctx.strokeStyle = isSel ? '#d84315' : '#2b2118';
       ctx.lineWidth = isSel ? 3 : 2;
 
-      ctx.fillRect(px1, py - Tpx / 2, pW, Tpx);
-      ctx.strokeRect(px1, py - Tpx / 2, pW, Tpx);
+      ctx.fillRect(px1, py - sTpx / 2, pW, sTpx);
+      ctx.strokeRect(px1, py - sTpx / 2, pW, sTpx);
 
-      // Etichetă cotă Y
+      // Notă cotă Y
       ctx.font = isSel ? 'bold 11px monospace' : '9px monospace';
       ctx.fillStyle = isSel ? '#d84315' : '#e65100';
       ctx.textAlign = 'right';
       ctx.fillText(`Y:${sh.y}`, px1 - 6, py + 3);
+
+      // Cotă lățime utilă
+      if (this.viewMode === 'technical') {
+        ctx.font = '8px monospace';
+        ctx.fillStyle = '#6d5a49';
+        ctx.textAlign = 'center';
+        ctx.fillText(`L:${Math.round(sh.x2 - sh.x1)}`, px1 + pW / 2, py - 4);
+      }
     });
 
-    // 5. Bare Haine Umerașe
+    // 5. Bare Haine
     (this.cabinet.rods || []).forEach(rd => {
       const py = y + h - rd.y * scale;
       const px1 = x + rd.x1 * scale + 4;
       const px2 = x + rd.x2 * scale - 4;
       const isSel = this.selectedItem && this.selectedItem.id === rd.id;
 
-      ctx.strokeStyle = isSel ? '#d84315' : '#78909c';
+      ctx.strokeStyle = isSel ? '#d84315' : '#607d8b';
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.moveTo(px1, py);
       ctx.lineTo(px2, py);
       ctx.stroke();
 
-      // Suport rotund la capete
-      ctx.fillStyle = '#455a64';
+      ctx.fillStyle = '#37474f';
       ctx.fillRect(px1 - 2, py - 4, 4, 8);
       ctx.fillRect(px2 - 2, py - 4, 4, 8);
 
-      // Iconiță umeraș
-      ctx.font = '11px sans-serif';
+      ctx.font = '10px sans-serif';
       ctx.fillStyle = '#37474f';
       ctx.textAlign = 'center';
       ctx.fillText('👔 Bară Haine', (px1 + px2) / 2, py - 6);
     });
 
-    // 6. Sertare
-    (this.cabinet.drawers || []).forEach(dw => {
-      const isSel = this.selectedItem && this.selectedItem.id === dw.id;
-      const px1 = x + dw.x1 * scale + 4;
-      const px2 = x + dw.x2 * scale - 4;
-      const py2 = y + h - dw.y1 * scale - 2;
-      const py1 = y + h - dw.y2 * scale + 2;
-      const pW = px2 - px1;
-      const pH = py2 - py1;
-
-      ctx.fillStyle = isSel ? 'rgba(255, 152, 0, 0.25)' : 'rgba(230, 81, 0, 0.12)';
-      ctx.strokeStyle = isSel ? '#d84315' : '#e65100';
-      ctx.lineWidth = 1.8;
-      ctx.fillRect(px1, py1, pW, pH);
-      ctx.strokeRect(px1, py1, pW, pH);
-
-      // Mâner sertar
-      ctx.fillStyle = '#212121';
-      ctx.fillRect(px1 + pW / 2 - 20, py1 + pH / 2 - 2, 40, 4);
-
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = '#e65100';
-      ctx.textAlign = 'center';
-      ctx.fillText(`🗄️ Sertar (H=${Math.round(dw.height || 200)}mm)`, px1 + pW / 2, py1 + pH / 2 + 13);
+    // 6. Benzi LED
+    (this.cabinet.leds || []).forEach(ld => {
+      const py = y + h - ld.y * scale;
+      const px1 = x + ld.x1 * scale + 4;
+      const px2 = x + ld.x2 * scale - 4;
+      ctx.strokeStyle = '#ffd600';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(px1, py); ctx.lineTo(px2, py); ctx.stroke();
     });
 
-    // 7. Uși
-    (this.cabinet.doors || []).forEach(dr => {
-      const isSel = this.selectedItem && this.selectedItem.id === dr.id;
-      const px1 = x + dr.x1 * scale + 3;
-      const px2 = x + dr.x2 * scale - 3;
-      const py2 = y + h - dr.y1 * scale - 3;
-      const py1 = y + h - dr.y2 * scale + 3;
-      const pW = px2 - px1;
-      const pH = py2 - py1;
+    // 7. Sertare (dacă nu e doar mod fațadă)
+    if (this.viewMode !== 'facade') {
+      (this.cabinet.drawers || []).forEach(dw => {
+        const isSel = this.selectedItem && this.selectedItem.id === dw.id;
+        const px1 = x + dw.x1 * scale + 4;
+        const px2 = x + dw.x2 * scale - 4;
+        const py2 = y + h - dw.y1 * scale - 2;
+        const py1 = y + h - dw.y2 * scale + 2;
+        const pW = px2 - px1;
+        const pH = py2 - py1;
 
-      ctx.save();
-      ctx.strokeStyle = isSel ? '#d84315' : '#2e7d32';
-      ctx.lineWidth = isSel ? 2.5 : 1.6;
-      ctx.setLineDash([5, 4]);
-
-      if (dr.type === 'double') {
-        const halfW = pW / 2 - 2;
-        // Ușa Stânga
-        ctx.strokeRect(px1, py1, halfW, pH);
-        // Ușa Dreapta
-        ctx.strokeRect(px1 + halfW + 4, py1, halfW, pH);
-
-        ctx.setLineDash([]);
-        // Mânere
-        ctx.fillStyle = '#2e7d32';
-        ctx.fillRect(px1 + halfW - 8, py1 + pH / 2 - 15, 3, 30);
-        ctx.fillRect(px1 + halfW + 9, py1 + pH / 2 - 15, 3, 30);
-      } else {
+        ctx.fillStyle = isSel ? 'rgba(255, 152, 0, 0.25)' : 'rgba(230, 81, 0, 0.12)';
+        ctx.strokeStyle = isSel ? '#d84315' : '#e65100';
+        ctx.lineWidth = 1.8;
+        ctx.fillRect(px1, py1, pW, pH);
         ctx.strokeRect(px1, py1, pW, pH);
-        ctx.setLineDash([]);
-        // Mâner stânga sau dreapta
-        ctx.fillStyle = '#2e7d32';
-        if (dr.type === 'single-right') {
-          ctx.fillRect(px1 + 8, py1 + pH / 2 - 15, 3, 30);
+
+        ctx.fillStyle = '#212121';
+        ctx.fillRect(px1 + pW / 2 - 20, py1 + pH / 2 - 2, 40, 4);
+
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#e65100';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🗄️ Sertar (H=${Math.round(dw.height || 180)})`, px1 + pW / 2, py1 + pH / 2 + 13);
+      });
+    }
+
+    // 8. Uși (dacă nu e în modul interior)
+    if (this.viewMode !== 'interior') {
+      (this.cabinet.doors || []).forEach(dr => {
+        const isSel = this.selectedItem && this.selectedItem.id === dr.id;
+        const px1 = x + dr.x1 * scale + 3;
+        const px2 = x + dr.x2 * scale - 3;
+        const py2 = y + h - dr.y1 * scale - 3;
+        const py1 = y + h - dr.y2 * scale + 3;
+        const pW = px2 - px1;
+        const pH = py2 - py1;
+
+        ctx.save();
+        ctx.strokeStyle = isSel ? '#d84315' : '#2e7d32';
+        ctx.lineWidth = isSel ? 2.5 : 1.6;
+        ctx.setLineDash([5, 4]);
+
+        if (dr.type === 'double') {
+          const halfW = pW / 2 - 2;
+          ctx.strokeRect(px1, py1, halfW, pH);
+          ctx.strokeRect(px1 + halfW + 4, py1, halfW, pH);
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#2e7d32';
+          ctx.fillRect(px1 + halfW - 8, py1 + pH / 2 - 15, 3, 30);
+          ctx.fillRect(px1 + halfW + 9, py1 + pH / 2 - 15, 3, 30);
         } else {
-          ctx.fillRect(px1 + pW - 11, py1 + pH / 2 - 15, 3, 30);
+          ctx.strokeRect(px1, py1, pW, pH);
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#2e7d32';
+          if (dr.type === 'single-right') {
+            ctx.fillRect(px1 + 8, py1 + pH / 2 - 15, 3, 30);
+          } else {
+            ctx.fillRect(px1 + pW - 11, py1 + pH / 2 - 15, 3, 30);
+          }
         }
-      }
 
-      ctx.font = 'bold 10px sans-serif';
-      ctx.fillStyle = '#2e7d32';
-      ctx.textAlign = 'center';
-      ctx.fillText(`🚪 Ușă (${dr.type})`, px1 + pW / 2, py1 + 14);
-      ctx.restore();
-    });
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#2e7d32';
+        ctx.textAlign = 'center';
+        ctx.fillText(`🚪 Ușă (${dr.type})`, px1 + pW / 2, py1 + 14);
+        ctx.restore();
+      });
+    }
 
-    // 8. Linia activă desenată în timp real
-    if (this.isDrawing && this.drawingStroke) {
-      const { startPx, currPx, startMm, currMm } = this.drawingStroke;
+    // 9. Drop Zone Highlight (când utilizatorul trage o piesă peste canvas)
+    if (this.dropTargetComp) {
+      const c = this.dropTargetComp;
+      const cX = x + c.x1 * scale + 2;
+      const cY = y + h - c.y2 * scale + 2;
+      const cW = (c.x2 - c.x1) * scale - 4;
+      const cH = (c.y2 - c.y1) * scale - 4;
+
       ctx.save();
-      ctx.strokeStyle = '#ff3d00';
-      ctx.fillStyle = '#ff3d00';
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.22)';
+      ctx.fillRect(cX, cY, cW, cH);
+      ctx.strokeStyle = '#2e7d32';
       ctx.lineWidth = 2.5;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(cX, cY, cW, cH);
 
-      ctx.beginPath();
-      ctx.moveTo(startPx.x, startPx.y);
-      ctx.lineTo(currPx.x, currPx.y);
-      ctx.stroke();
-
-      // Punct de capăt
-      ctx.beginPath();
-      ctx.arc(currPx.x, currPx.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Badge plutitor cotă în timp real
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(0,0,0,0.8)';
-      ctx.font = 'bold 11px monospace';
-      const label = this.selectedTool === 'shelf'
-        ? `Y: ${Math.round(currMm.mmY)} mm`
-        : (this.selectedTool === 'divider' ? `X: ${Math.round(currMm.mmX)} mm` : `${Math.round(currMm.mmX)} x ${Math.round(currMm.mmY)} mm`);
-      ctx.fillRect(currPx.x + 8, currPx.y - 20, 95, 20);
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'left';
-      ctx.fillText(label, currPx.x + 12, currPx.y - 6);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(cX + cW / 2 - 70, cY + cH / 2 - 12, 140, 24);
+      ctx.fillStyle = '#1b5e20';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📥 Eliberează aici', cX + cW / 2, cY + cH / 2 + 4);
       ctx.restore();
     }
 
-    // 9. Cote exterioare L x H
+    // 10. Cote Exterioare L x H
     ctx.strokeStyle = '#1f1a16';
     ctx.fillStyle = '#1f1a16';
     ctx.lineWidth = 1.2;
