@@ -25,8 +25,8 @@ export function calculateJoinery({
   const shelfCount = Array.isArray(shelves) ? shelves.length : (typeof shelves === 'number' && !isNaN(shelves) ? shelves : 2);
   const dividerList = Array.isArray(dividers) ? dividers : [];
   const dividerCount = Array.isArray(dividers) ? dividers.length : (typeof dividers === 'number' && !isNaN(dividers) ? dividers : 0);
-  const doorCount = typeof doors === 'number' ? doors : (doors ? 2 : 0);
-  const drawerCount = typeof drawers === 'number' ? drawers : (drawers ? 1 : 0);
+  const doorCount = Array.isArray(doors) ? doors.length : (typeof doors === 'number' ? doors : (doors ? 2 : 0));
+  const drawerCount = Array.isArray(drawers) ? drawers.length : (typeof drawers === 'number' ? drawers : (drawers ? 1 : 0));
 
   // Regula de amplasare a găurilor pe adâncime:
   // Gaură 1 la 37mm de la față, Gaură 2 la 37mm de la spate.

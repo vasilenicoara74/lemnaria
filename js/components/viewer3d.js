@@ -1262,25 +1262,66 @@ export class Studio3D {
     });
 
     // 3. Montanți verticali despărțitori
-    (config.dividers || []).forEach((divX, idx) => {
+    const jType = config.joineryType || 'confirmat';
+    const holeZ = [D / 2 - 37, -(D / 2 - 37)];
+
+    (config.dividers || []).forEach((dv, idx) => {
+      const divX = typeof dv === 'object' ? dv.x : dv;
+      const y1 = (typeof dv === 'object' && dv.y1 != null) ? dv.y1 : T;
+      const y2 = (typeof dv === 'object' && dv.y2 != null) ? dv.y2 : (H - T);
+      const divH = Math.max(30, y2 - y1);
       const posX = -W / 2 + divX;
+      const posY = (y1 + y2) / 2;
+
       this.addPart({
-        name: `Montant Despărțitor #${idx + 1}`,
-        length: T, width: D - 15, thickness: innerH,
-        pos: { x: posX, y: H / 2, z: -5 },
+        name: `Montant Despărțitor #${idx + 1} (${D - 15}x${Math.round(divH)}mm)`,
+        length: T, width: D - 15, thickness: divH,
+        pos: { x: posX, y: posY, z: -5 },
         explodeDir: { x: 0, y: 0, z: -0.8 },
         material: woodMat
+      });
+
+      // Șuruburi prindere capete montant
+      [y1, y2].forEach(jointY => {
+        holeZ.forEach(zPos => {
+          this.addFastener({
+            type: jType === 'dowel' ? 'dowel' : (jType === 'minifix' ? 'minifix' : 'screw'),
+            name: `${jType === 'dowel' ? 'Diblu fag' : (jType === 'minifix' ? 'Minifix' : 'Confirmat 7x50')} (Montant #${idx + 1})`,
+            pos: { x: posX, y: jointY, z: zPos },
+            rot: { x: Math.PI / 2 },
+            explodeDir: { x: 0, y: jointY < H / 2 ? -1 : 1, z: 0 }
+          });
+        });
       });
     });
 
     // 4. Polițe orizontale
-    (config.shelves || []).forEach((shY, idx) => {
+    (config.shelves || []).forEach((sh, idx) => {
+      const shY = typeof sh === 'object' ? sh.y : sh;
+      const x1 = (typeof sh === 'object' && sh.x1 != null) ? sh.x1 : T;
+      const x2 = (typeof sh === 'object' && sh.x2 != null) ? sh.x2 : (W - T);
+      const shL = Math.max(30, x2 - x1);
+      const posX = -W / 2 + (x1 + x2) / 2;
+
       this.addPart({
-        name: `Poliță Orizontală #${idx + 1}`,
-        length: innerW, width: D - 20, thickness: T,
-        pos: { x: 0, y: shY, z: -10 },
+        name: `Poliță Orizontală #${idx + 1} (${Math.round(shL)}x${D - 20}mm)`,
+        length: shL, width: D - 20, thickness: T,
+        pos: { x: posX, y: shY, z: -10 },
         explodeDir: { x: 0, y: 0, z: 1.2 },
         material: woodMat
+      });
+
+      // Șuruburi prindere laterale poliță
+      [x1, x2].forEach((jointX, sideIdx) => {
+        holeZ.forEach(zPos => {
+          this.addFastener({
+            type: jType === 'dowel' ? 'dowel' : (jType === 'minifix' ? 'minifix' : 'screw'),
+            name: `${jType === 'dowel' ? 'Diblu fag' : (jType === 'minifix' ? 'Minifix' : 'Confirmat 7x50')} (Poliță #${idx + 1})`,
+            pos: { x: -W / 2 + jointX, y: shY, z: zPos },
+            rot: { z: Math.PI / 2 },
+            explodeDir: { x: sideIdx === 0 ? -1 : 1, y: 0, z: 0 }
+          });
+        });
       });
     });
 
@@ -1295,85 +1336,173 @@ export class Studio3D {
       });
     }
 
-    // 6. Uși batante montate pe pivoti de balama
-    if (config.hasDoors) {
+    // 6. Bare metalice pentru umerașe haine
+    (config.rods || []).forEach((rd, idx) => {
+      const x1 = rd.x1 != null ? rd.x1 : T;
+      const x2 = rd.x2 != null ? rd.x2 : (W - T);
+      const rodL = Math.max(40, (x2 - x1) - 6);
+      const posX = -W / 2 + (x1 + x2) / 2;
+      const posY = rd.y;
+
+      const rodGeo = new THREE.CylinderGeometry(12, 12, rodL, 16);
+      const rodMat = new THREE.MeshStandardMaterial({
+        color: 0xcccccc, metalness: 0.95, roughness: 0.15,
+        clippingPlanes: this.isSectionActive ? [this.clipPlane] : []
+      });
+      const rodMesh = new THREE.Mesh(rodGeo, rodMat);
+      rodMesh.rotation.z = Math.PI / 2;
+      rodMesh.position.set(posX, posY, 0);
+      this.scene.add(rodMesh);
+
+      const rodData = {
+        name: `Bară Umerașe Cromată Ø25mm (L=${Math.round(rodL)}mm)`,
+        length: rodL, width: 25, thickness: 25,
+        pos: { x: posX, y: posY, z: 0 },
+        basePos: new THREE.Vector3(posX, posY, 0),
+        mesh: rodMesh,
+        explodeDir: new THREE.Vector3(0, 0, 1.4)
+      };
+      rodMesh.userData = rodData;
+      this.parts.push(rodData);
+    });
+
+    // 7. Uși interactive montate pe pivoti de balamale
+    const addDoorHelper = (doorName, dW, dH, hingeX, centerY, openDir, isHandleRight) => {
+      const doorT = 18;
+      const doorZ = (D + doorT) / 2 + 2;
+      const pivotGroup = new THREE.Group();
+      pivotGroup.position.set(hingeX, centerY, doorZ);
+      this.scene.add(pivotGroup);
+
+      const localDoorX = openDir < 0 ? (dW / 2 - 2) : (-dW / 2 + 2);
+      const doorPart = this.addPart({
+        name: doorName,
+        length: dW - 4, width: doorT, thickness: dH,
+        pos: { x: localDoorX, y: 0, z: 0 },
+        explodeDir: { x: (openDir < 0 ? -0.4 : 0.4), y: 0, z: 1.8 },
+        material: woodMat,
+        parent: pivotGroup,
+        isDoor: true,
+        hingeSide: openDir < 0 ? 'left' : 'right'
+      });
+
+      // Balamale Soft-Close
+      const hingeOffY = Math.min(100, dH * 0.35);
+      [-hingeOffY, hingeOffY].forEach((hRelY, hIdx) => {
+        this.addFastener({
+          type: 'hinge',
+          name: `Balama Soft-Close Ø35mm #${hIdx + 1} (${doorName})`,
+          pos: { x: hingeX, y: centerY + hRelY, z: D / 2 - 12 },
+          rot: { y: openDir < 0 ? 0 : Math.PI },
+          explodeDir: { x: openDir < 0 ? -1.2 : 1.2, y: 0, z: 1.2 }
+        });
+      });
+
+      // Mâner
+      const localHandleX = isHandleRight ? (dW - 28) : (-dW + 28);
+      this.addFastener({
+        type: 'handle',
+        name: `Mâner Bară Inox 128mm (${doorName})`,
+        pos: { x: localHandleX, y: 0, z: doorT / 2 + 10 },
+        rot: { x: 0, y: 0, z: 0 },
+        explodeDir: { x: (openDir < 0 ? 0.3 : -0.3), y: 0, z: 2.2 },
+        parent: pivotGroup
+      });
+
+      this.doorPivots.push({
+        pivotGroup,
+        openDir,
+        doorPart,
+        currentAngle: 0,
+        targetAngle: 0
+      });
+    };
+
+    if (config.doors && config.doors.length > 0) {
+      config.doors.forEach((dr, idx) => {
+        const x1 = dr.x1 != null ? dr.x1 : T;
+        const x2 = dr.x2 != null ? dr.x2 : (W - T);
+        const y1 = dr.y1 != null ? dr.y1 : T;
+        const y2 = dr.y2 != null ? dr.y2 : (H - T);
+        const dW = Math.max(40, (x2 - x1) - 4);
+        const dH = Math.max(40, (y2 - y1) - 4);
+        const centerY = (y1 + y2) / 2;
+
+        if (dr.type === 'double') {
+          const halfW = (dW - 2) / 2;
+          addDoorHelper(`Ușă Dublă Stânga #${idx + 1}`, halfW, dH, -W / 2 + x1 + 2, centerY, -1, true);
+          addDoorHelper(`Ușă Dublă Dreapta #${idx + 1}`, halfW, dH, -W / 2 + x2 - 2, centerY, 1, false);
+        } else {
+          const isRight = dr.type === 'single-right';
+          const hX = isRight ? (-W / 2 + x2 - 2) : (-W / 2 + x1 + 2);
+          addDoorHelper(`Ușă Batantă #${idx + 1}`, dW, dH, hX, centerY, isRight ? 1 : -1, !isRight);
+        }
+      });
+    } else if (config.hasDoors) {
       const doorCount = config.doorCount || 2;
       const doorW = (W - 4) / doorCount;
       const doorH = H - 4;
-      const doorT = 18;
-      const doorZ = (D + doorT) / 2 + 2;
-
       for (let i = 0; i < doorCount; i++) {
         const hingeEdgeX = i === 0 ? (-W / 2 + 2) : (W / 2 - 2);
-        const openDir = i === 0 ? -1 : 1; // stanga se deschide spre exterior (-Y rot), dreapta spre (+Y rot)
-
-        // Creem Pivot Group pe axa balamalei (pe muchia exterioara)
-        const pivotGroup = new THREE.Group();
-        pivotGroup.position.set(hingeEdgeX, H / 2, doorZ);
-        this.scene.add(pivotGroup);
-
-        // Pozitia usii raportata la pivotul balamalei
-        const localDoorX = i === 0 ? (doorW / 2 - 2) : (-doorW / 2 + 2);
-
-        const doorPart = this.addPart({
-          name: `Ușă Batantă #${i + 1}`,
-          length: doorW - 4, width: doorT, thickness: doorH,
-          pos: { x: localDoorX, y: 0, z: 0 },
-          explodeDir: { x: (i === 0 ? -0.4 : 0.4), y: 0, z: 1.8 },
-          material: woodMat,
-          parent: pivotGroup,
-          isDoor: true,
-          doorIndex: i,
-          hingeSide: i === 0 ? 'left' : 'right'
-        });
-
-        // Balamale atasate de carcasa
-        [100, H - 100].forEach((hY, hIdx) => {
-          this.addFastener({
-            type: 'hinge',
-            name: `Balama Soft-Close Ø35mm #${hIdx + 1} (Ușa ${i + 1})`,
-            pos: { x: hingeEdgeX, y: hY, z: D / 2 - 12 },
-            rot: { y: i === 0 ? 0 : Math.PI },
-            explodeDir: { x: i === 0 ? -1.2 : 1.2, y: 0, z: 1.2 }
-          });
-        });
-
-        // Mâner atasat de usa (pe pivotGroup)
-        const localHandleX = i === 0 ? (doorW - 28) : (-doorW + 28);
-        this.addFastener({
-          type: 'handle',
-          name: `Mâner Bară Inox 128mm (Ușa ${i + 1})`,
-          pos: { x: localHandleX, y: 0, z: doorT / 2 + 10 },
-          rot: { x: 0, y: 0, z: 0 },
-          explodeDir: { x: (i === 0 ? 0.3 : -0.3), y: 0, z: 2.2 },
-          parent: pivotGroup
-        });
-
-        // Broască cilindrică montată pe ușă
-        if (config.hasLocks && i === 0) {
-          this.addFastener({
-            type: 'lock',
-            name: 'Broască Cilindrică Mobilier cu Cheie Ø19mm',
-            pos: { x: localHandleX, y: 90, z: doorT / 2 + 5 },
-            rot: { x: Math.PI / 2, y: 0, z: 0 },
-            explodeDir: { x: 0, y: 0, z: 2.2 },
-            color: 0xcca010,
-            parent: pivotGroup
-          });
-        }
-
-        this.doorPivots.push({
-          pivotGroup,
-          openDir,
-          doorPart,
-          currentAngle: 0,
-          targetAngle: 0
-        });
+        const openDir = i === 0 ? -1 : 1;
+        addDoorHelper(`Ușă Batantă #${i + 1}`, doorW, doorH, hingeEdgeX, H / 2, openDir, i === 0);
       }
     }
 
-    // 7. Sertar
-    if (config.hasDrawers) {
+    // 8. Sertare
+    if (config.drawers && config.drawers.length > 0) {
+      config.drawers.forEach((dw, idx) => {
+        const x1 = dw.x1 != null ? dw.x1 : T;
+        const x2 = dw.x2 != null ? dw.x2 : (W - T);
+        const y1 = dw.y1 != null ? dw.y1 : T;
+        const dwW = Math.max(40, (x2 - x1) - 6);
+        const dwH = Math.max(30, dw.height || 200);
+        const posX = -W / 2 + (x1 + x2) / 2;
+        const posY = y1 + dwH / 2;
+
+        // Front sertar
+        this.addPart({
+          name: `Front Sertar #${idx + 1} (${Math.round(dwW)}x${Math.round(dwH)}mm)`,
+          length: dwW, width: 18, thickness: dwH,
+          pos: { x: posX, y: posY, z: (D + 18) / 2 + 2 },
+          explodeDir: { x: 0, y: 0, z: 2.2 },
+          material: woodMat
+        });
+
+        // Cutie interioară sertar
+        const boxMat = this.createWoodMaterial('pin');
+        this.addPart({
+          name: `Fund Sertar #${idx + 1}`,
+          length: dwW - 20, width: D - 40, thickness: 8,
+          pos: { x: posX, y: y1 + 8, z: 0 },
+          explodeDir: { x: 0, y: 0, z: 1.8 },
+          material: boxMat
+        });
+        this.addPart({
+          name: `Laterală Stânga Sertar #${idx + 1}`,
+          length: 12, width: D - 40, thickness: dwH - 24,
+          pos: { x: posX - (dwW - 24) / 2, y: posY, z: 0 },
+          explodeDir: { x: -0.6, y: 0, z: 1.8 },
+          material: boxMat
+        });
+        this.addPart({
+          name: `Laterală Dreapta Sertar #${idx + 1}`,
+          length: 12, width: D - 40, thickness: dwH - 24,
+          pos: { x: posX + (dwW - 24) / 2, y: posY, z: 0 },
+          explodeDir: { x: 0.6, y: 0, z: 1.8 },
+          material: boxMat
+        });
+
+        // Mâner sertar
+        this.addFastener({
+          type: 'handle',
+          name: `Mâner Sertar #${idx + 1}`,
+          pos: { x: posX, y: posY, z: (D + 18) / 2 + 18 },
+          rot: { z: Math.PI / 2 },
+          explodeDir: { x: 0, y: 0, z: 2.5 }
+        });
+      });
+    } else if (config.hasDrawers) {
       const drawerCount = config.drawerCount || 1;
       const drawerH = Math.min(220, Math.floor(innerH / (drawerCount + 1)));
       for (let d = 0; d < drawerCount; d++) {
@@ -1388,11 +1517,7 @@ export class Studio3D {
       }
     }
 
-    // 8. ELEMENTE DE ASAMBLARE 3D (Șuruburi, Dibluri, Minifix)
-    const jType = config.joineryType || 'confirmat';
-    const holeZ = [D / 2 - 37, -(D / 2 - 37)];
-
-    // Șuruburi / dibluri îmbinare laterală - bază & capac
+    // 9. ELEMENTE DE ASAMBLARE CADRU EXTERIOR
     const yJoints = [T / 2, H - T / 2];
     [-W / 2, W / 2].forEach(xPos => {
       const expX = xPos < 0 ? -1.8 : 1.8;

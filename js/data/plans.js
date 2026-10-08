@@ -172,16 +172,115 @@ export const FEATURED_PLANS = [
       { step: 3, title: 'Montaj și reglaj balamale uși', text: 'Frezați oalele de 35mm la 21.5mm de muchie și reglați rosturile.' }
     ],
     generateParts(p) {
-      const W = p.length || 800, D = p.width || 450, H = p.height || 1200, T = p.thickness || 18, shCount = p.shelves !== undefined ? p.shelves : 2;
-      const innerW = W - 2*T;
-      return [
-        { name: 'Montanți Laterali', qty: 2, length: H, width: D, thickness: T, material: 'Panou masiv / PAL' },
+      const W = p.length || 800, D = p.width || 450, H = p.height || 1200, T = p.thickness || 18;
+      const innerW = W - 2 * T;
+      const parts = [
+        { name: 'Montanți Laterali Exteriori', qty: 2, length: H, width: D, thickness: T, material: 'Panou masiv / PAL' },
         { name: 'Capac Superior (Top)', qty: 1, length: innerW, width: D, thickness: T, material: 'Panou masiv / PAL' },
-        { name: 'Fund Corp (Bază)', qty: 1, length: innerW, width: D, thickness: T, material: 'Panou masiv / PAL' },
-        { name: 'Polițe Interioare', qty: shCount, length: innerW - 2, width: D - 15, thickness: T, material: 'Panou masiv / PAL' },
-        { name: 'Uși Batante', qty: p.doors || 2, length: H - 4, width: Math.floor((W - 4)/(p.doors || 2)), thickness: T, material: 'Fațadă lemn' },
-        { name: 'Spate PFL / HDF 3mm', qty: 1, length: W - 4, width: H - 4, thickness: 3, material: 'HDF alb/lemn' }
+        { name: 'Fund Corp (Bază)', qty: 1, length: innerW, width: D, thickness: T, material: 'Panou masiv / PAL' }
       ];
+
+      const cab = p.cabinetData;
+      if (cab) {
+        // Spate HDF
+        if (cab.hasBack !== false) {
+          parts.push({ name: 'Spate PFL / HDF 3mm', qty: 1, length: W - 4, width: H - 4, thickness: 3, material: 'HDF alb/lemn' });
+        }
+        // Montanți custom
+        (cab.dividers || []).forEach((dv, idx) => {
+          const y1 = typeof dv === 'object' && dv.y1 != null ? dv.y1 : T;
+          const y2 = typeof dv === 'object' && dv.y2 != null ? dv.y2 : (H - T);
+          const divH = Math.max(30, y2 - y1);
+          parts.push({
+            name: `Montant Despărțitor #${idx + 1}`,
+            qty: 1,
+            length: divH,
+            width: D - 15,
+            thickness: T,
+            material: 'Panou masiv / PAL'
+          });
+        });
+        // Polițe custom
+        (cab.shelves || []).forEach((sh, idx) => {
+          const x1 = typeof sh === 'object' && sh.x1 != null ? sh.x1 : T;
+          const x2 = typeof sh === 'object' && sh.x2 != null ? sh.x2 : (W - T);
+          const shL = Math.max(30, x2 - x1);
+          parts.push({
+            name: `Poliță Orizontală #${idx + 1}`,
+            qty: 1,
+            length: shL,
+            width: D - 20,
+            thickness: T,
+            material: 'Panou masiv / PAL'
+          });
+        });
+        // Uși custom
+        (cab.doors || []).forEach((dr, idx) => {
+          const x1 = dr.x1 != null ? dr.x1 : T;
+          const x2 = dr.x2 != null ? dr.x2 : (W - T);
+          const y1 = dr.y1 != null ? dr.y1 : T;
+          const y2 = dr.y2 != null ? dr.y2 : (H - T);
+          const dW = Math.max(40, (x2 - x1) - 4);
+          const dH = Math.max(40, (y2 - y1) - 4);
+          if (dr.type === 'double') {
+            parts.push({
+              name: `Uși Duble #${idx + 1} (Pereche)`,
+              qty: 2,
+              length: dH,
+              width: Math.floor((dW - 2) / 2),
+              thickness: T,
+              material: 'Fațadă MDF / Lemn'
+            });
+          } else {
+            parts.push({
+              name: `Ușă Batantă #${idx + 1}`,
+              qty: 1,
+              length: dH,
+              width: dW,
+              thickness: T,
+              material: 'Fațadă MDF / Lemn'
+            });
+          }
+        });
+        // Sertare custom
+        (cab.drawers || []).forEach((dw, idx) => {
+          const x1 = dw.x1 != null ? dw.x1 : T;
+          const x2 = dw.x2 != null ? dw.x2 : (W - T);
+          const dwW = Math.max(40, (x2 - x1) - 6);
+          const dwH = Math.max(30, dw.height || 200);
+          parts.push({
+            name: `Front Sertar #${idx + 1}`,
+            qty: 1,
+            length: dwW,
+            width: dwH,
+            thickness: T,
+            material: 'Fațadă MDF / Lemn'
+          });
+          parts.push({
+            name: `Cutie Sertar #${idx + 1} (Laterale)`,
+            qty: 2,
+            length: D - 40,
+            width: dwH - 24,
+            thickness: 12,
+            material: 'Mesteacăn / Fag'
+          });
+          parts.push({
+            name: `Cutie Sertar #${idx + 1} (Spate/Fund)`,
+            qty: 1,
+            length: dwW - 44,
+            width: D - 40,
+            thickness: 8,
+            material: 'Placaj mesteacăn'
+          });
+        });
+      } else {
+        const shCount = p.shelves !== undefined ? p.shelves : 2;
+        parts.push({ name: 'Polițe Interioare', qty: shCount, length: innerW - 2, width: D - 15, thickness: T, material: 'Panou masiv / PAL' });
+        parts.push({ name: 'Uși Batante', qty: p.doors || 2, length: H - 4, width: Math.floor((W - 4) / (p.doors || 2)), thickness: T, material: 'Fațadă lemn' });
+        parts.push({ name: 'Spate PFL / HDF 3mm', qty: 1, length: W - 4, width: H - 4, thickness: 3, material: 'HDF alb/lemn' });
+      }
+
+      return parts;
     }
   },
   {

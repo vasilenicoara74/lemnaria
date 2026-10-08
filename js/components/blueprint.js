@@ -80,6 +80,71 @@ export function render2DBlueprint(canvas, plan, params = {}) {
     ctx.beginPath(); ctx.moveTo(fX, ly); ctx.lineTo(fX + fW, ly); ctx.stroke();
   }
 
+  // Desenare elemente interioare pentru corp customizabil
+  if (params.cabinetData || plan.id === 'custom-cabinet') {
+    const cab = params.cabinetData || {};
+    const cShelves = cab.shelves || [];
+    const cDividers = cab.dividers || [];
+    const cDoors = cab.doors || [];
+    const cDrawers = cab.drawers || [];
+    const cRods = cab.rods || [];
+
+    // Montanți
+    cDividers.forEach(dv => {
+      const dx = fX + (typeof dv === 'object' ? dv.x : dv) * scale;
+      const dy1 = fY + fH - ((typeof dv === 'object' && dv.y2 != null) ? dv.y2 : H - T) * scale;
+      const dy2 = fY + fH - ((typeof dv === 'object' && dv.y1 != null) ? dv.y1 : T) * scale;
+      ctx.fillStyle = '#ebd8c2';
+      ctx.strokeStyle = '#2b2118';
+      ctx.fillRect(dx - 1, dy1, 3, Math.max(3, dy2 - dy1));
+      ctx.strokeRect(dx - 1, dy1, 3, Math.max(3, dy2 - dy1));
+    });
+
+    // Polițe
+    cShelves.forEach(sh => {
+      const sy = fY + fH - (typeof sh === 'object' ? sh.y : sh) * scale;
+      const sx1 = fX + ((typeof sh === 'object' && sh.x1 != null) ? sh.x1 : T) * scale;
+      const sx2 = fX + ((typeof sh === 'object' && sh.x2 != null) ? sh.x2 : L - T) * scale;
+      ctx.fillStyle = '#ebd8c2';
+      ctx.strokeStyle = '#2b2118';
+      ctx.fillRect(sx1, sy - 1, Math.max(4, sx2 - sx1), 3);
+      ctx.strokeRect(sx1, sy - 1, Math.max(4, sx2 - sx1), 3);
+    });
+
+    // Uși (linie punctată verde)
+    cDoors.forEach(dr => {
+      const dx1 = fX + dr.x1 * scale + 2;
+      const dx2 = fX + dr.x2 * scale - 2;
+      const dy2 = fY + fH - dr.y1 * scale - 2;
+      const dy1 = fY + fH - dr.y2 * scale + 2;
+      ctx.save();
+      ctx.strokeStyle = '#2e7d32';
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(dx1, dy1, dx2 - dx1, dy2 - dy1);
+      ctx.restore();
+    });
+
+    // Sertare
+    cDrawers.forEach(dw => {
+      const dx1 = fX + dw.x1 * scale + 2;
+      const dx2 = fX + dw.x2 * scale - 2;
+      const dy2 = fY + fH - dw.y1 * scale - 1;
+      const dy1 = fY + fH - dw.y2 * scale + 1;
+      ctx.strokeStyle = '#e65100';
+      ctx.strokeRect(dx1, dy1, dx2 - dx1, dy2 - dy1);
+    });
+
+    // Bare haine
+    cRods.forEach(rd => {
+      const rx1 = fX + rd.x1 * scale + 2;
+      const rx2 = fX + rd.x2 * scale - 2;
+      const ry = fY + fH - rd.y * scale;
+      ctx.strokeStyle = '#455a64';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx1, ry); ctx.lineTo(rx2, ry); ctx.stroke();
+    });
+  }
+
   // Cotă Lățime Totală Față (sus)
   drawDimension(ctx, fX, fY - 12, fX + fW, fY - 12, `${L} mm`);
   // Cotă Înălțime Față (stânga)

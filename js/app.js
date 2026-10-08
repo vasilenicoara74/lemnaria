@@ -785,6 +785,8 @@ class LemnariaApp {
             ${WOODS.map(w => `<option value="${w.id}" ${w.id === woodId ? 'selected' : ''}>🪵 ${w.name.split(' (')[0]}</option>`).join('')}
           </select>
 
+          <a href="#/sketch" class="btn sm" style="background:#e65100;color:#fff;border-color:#e65100;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;padding:7px 12px;white-space:nowrap;" title="Deschide atelierul de schițare 2D liberă">✏️ Schițează 2D</a>
+
           <button id="zoomIn3dBtn" title="Mărește perspectiva">🔍+</button>
           <button id="zoomOut3dBtn" title="Micșorează perspectiva">🔍−</button>
           <button id="toggleDoors3dBtn" title="Deschide / Închide Uși">🚪 Deschide Uși</button>
@@ -1005,9 +1007,13 @@ class LemnariaApp {
       this.showToast('Se generează fișa tehnică PDF...');
       const snap = this.activeStudio.getSnapshotURL();
       try {
+        const effectiveParams = {
+          ...this.currentParams,
+          cabinetData: isCustom ? this.customCabinetConfig : null
+        };
         await exportTechnicalPDF({
           plan,
-          params: this.currentParams,
+          params: effectiveParams,
           woodId: this.currentWoodId,
           snapshot3D: snap
         });
@@ -1020,7 +1026,11 @@ class LemnariaApp {
     exportExcelFab.addEventListener('click', () => {
       this.showToast('Se generează fișierul Excel (.xlsx)...');
       try {
-        const bom = calculateBOM(plan, this.currentParams, this.currentWoodId);
+        const effectiveParams = {
+          ...this.currentParams,
+          cabinetData: isCustom ? this.customCabinetConfig : null
+        };
+        const bom = calculateBOM(plan, effectiveParams, this.currentWoodId);
         exportToExcel(bom, `Lemnaria_${plan.id}_BOM.xlsx`);
         this.showToast('✅ Fișier Excel descărcat!');
       } catch (err) {
@@ -1104,7 +1114,10 @@ class LemnariaApp {
     `);
 
     const canvas = document.getElementById('blueprintCanvas');
-    render2DBlueprint(canvas, plan, this.currentParams);
+    render2DBlueprint(canvas, plan, {
+      ...this.currentParams,
+      cabinetData: this.customCabinetConfig
+    });
 
     document.getElementById('saveBlueprintImgBtn').addEventListener('click', () => {
       const link = document.createElement('a');
