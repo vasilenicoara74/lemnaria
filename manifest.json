@@ -1,0 +1,17 @@
+{
+  "name": "Lemnaria – Atelier Tâmplărie AI & 3D CAD",
+  "short_name": "Lemnaria",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1f1a16",
+  "theme_color": "#1f1a16",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
