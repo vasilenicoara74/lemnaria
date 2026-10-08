@@ -104,15 +104,16 @@ table.t th{color:var(--muted);font-weight:600}
 .typing{opacity:.6;font-style:italic}
 
 /* Designer */
-#designer{position:absolute;inset:0;display:flex;flex-direction:column}
-#d3{flex:1;position:relative;touch-action:none;background:linear-gradient(180deg,#e9e2d8,#cfc2b2)}
-#d3 canvas{display:block}
-.dtool{display:flex;gap:6px;overflow-x:auto;padding:8px;background:#fff;border-bottom:1px solid var(--line)}
-.dtool::-webkit-scrollbar{display:none}
-.dtool button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 10px;font-size:13px;cursor:pointer;white-space:nowrap}
+#designer{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+#d3{flex:1;position:relative;touch-action:none;background:linear-gradient(180deg,#e9e2d8,#cfc2b2);overflow:hidden}
+#d3 canvas{display:block;width:100%!important;height:100%!important}
+.dtool{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:10px 8px;background:#fff;border-bottom:1px solid var(--line);z-index:10;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.dtool::-webkit-scrollbar{height:4px}
+.dtool::-webkit-scrollbar-thumb{background:#cbbfb2;border-radius:4px}
+.dtool button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
 .dtool button.on{background:var(--dark);color:#fff;border-color:var(--dark)}
 .dtool .sep{flex:0 0 1px;background:var(--line);margin:2px 2px}
-.overlay-info{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.85);border-radius:10px;padding:6px 10px;font-size:12px;pointer-events:none;max-width:70%}
+.overlay-info{position:absolute;left:8px;top:8px;background:rgba(255,255,255,.9);backdrop-filter:blur(4px);border-radius:10px;padding:6px 10px;font-size:12px;pointer-events:none;max-width:70%;box-shadow:0 2px 6px rgba(0,0,0,.1)}
 .fab-row{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:8px}
 .fab{width:50px;height:50px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:22px;box-shadow:0 3px 10px rgba(0,0,0,.25);cursor:pointer}
 .fab.dark{background:var(--dark)}

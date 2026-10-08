@@ -605,6 +605,112 @@ export class Studio3D {
         material: woodMat
       });
 
+    } else if (planId === 'picnic-table') {
+      const L = params.length || 1800;
+      const W = params.width || 1500;
+      const H = params.height || 760;
+      const T = params.thickness || 40;
+      const benchH = 430;
+      const benchW = 280;
+      const tableW = 750;
+
+      // 1. Cele 5 scânduri ale blatului mesei
+      const slatW = 140;
+      const slatGap = 8;
+      const totalTableSlats = 5;
+      const startTableZ = -((totalTableSlats * slatW + (totalTableSlats - 1) * slatGap) / 2) + slatW / 2;
+
+      for (let s = 0; s < totalTableSlats; s++) {
+        const curZ = startTableZ + s * (slatW + slatGap);
+        this.addPart({
+          name: `Scândură Blat Masă #${s + 1}`,
+          length: L, width: slatW, thickness: T,
+          pos: { x: 0, y: H - T / 2, z: curZ },
+          explodeDir: { x: 0, y: 1.6, z: (curZ / (tableW / 2)) * 0.4 },
+          material: woodMat
+        });
+      }
+
+      // 2. Cele 4 scânduri pentru bănci (2 pe stânga, 2 pe dreapta)
+      [-1, 1].forEach((side, sIdx) => {
+        const centerBenchZ = side * (W / 2 - benchW / 2);
+        [-slatW / 2 - slatGap / 2, slatW / 2 + slatGap / 2].forEach((offsetZ, bIdx) => {
+          this.addPart({
+            name: `Scândură Bancă ${side < 0 ? 'Stânga' : 'Dreapta'} #${bIdx + 1}`,
+            length: L, width: slatW, thickness: T,
+            pos: { x: 0, y: benchH - T / 2, z: centerBenchZ + offsetZ },
+            explodeDir: { x: 0, y: 0.8, z: side * 1.5 },
+            material: woodMat
+          });
+        });
+      });
+
+      // 3. Cadre în A la cele 2 capete (Stânga și Dreapta)
+      [-L * 0.35, L * 0.35].forEach((frameX, fIdx) => {
+        const sideName = fIdx === 0 ? 'Capăt Față' : 'Capăt Spate';
+
+        // Traversă superioară suport blat
+        this.addPart({
+          name: `Traversă Suport Blat (${sideName})`,
+          length: T, width: tableW - 20, thickness: 110,
+          pos: { x: frameX, y: H - T - 55, z: 0 },
+          explodeDir: { x: Math.sign(frameX) * 0.8, y: 0, z: 0 },
+          material: woodMat
+        });
+
+        // Traversă lungă suport bănci (orizontală joasă)
+        this.addPart({
+          name: `Traversă Lungă Suport Bănci (${sideName})`,
+          length: T, width: W - 100, thickness: 120,
+          pos: { x: frameX, y: benchH - T - 60, z: 0 },
+          explodeDir: { x: Math.sign(frameX) * 0.8, y: 0, z: 0 },
+          material: woodMat
+        });
+
+        // Picioare înclinate în A (Stânga și Dreapta)
+        const angle = 0.35; // ~20 grade înclinare
+        const legLen = 820;
+        this.addPart({
+          name: `Picior Cadru A Stânga (${sideName})`,
+          length: T, width: 110, thickness: legLen,
+          pos: { x: frameX, y: H / 2 - 10, z: -320 },
+          rot: { x: angle },
+          explodeDir: { x: Math.sign(frameX) * 0.8, y: 0, z: -1.2 },
+          material: woodMat
+        });
+        this.addPart({
+          name: `Picior Cadru A Dreapta (${sideName})`,
+          length: T, width: 110, thickness: legLen,
+          pos: { x: frameX, y: H / 2 - 10, z: 320 },
+          rot: { x: -angle },
+          explodeDir: { x: Math.sign(frameX) * 0.8, y: 0, z: 1.2 },
+          material: woodMat
+        });
+
+        // Buloane metalice M10 asamblare cadru
+        [-320, 320].forEach((bz, bIdx) => {
+          this.addFastener({
+            type: 'screw',
+            name: `Bulon Caroserie M10x100mm (#${fIdx * 2 + bIdx + 1})`,
+            pos: { x: frameX + (frameX < 0 ? -15 : 15), y: benchH - T - 40, z: bz },
+            rot: { z: Math.PI / 2 },
+            explodeDir: { x: Math.sign(frameX) * 1.5, y: 0, z: 0 }
+          });
+        });
+      });
+
+      // 4. Diagonale rigidizare sub masă (contrafișe)
+      [-1, 1].forEach((dir, dIdx) => {
+        this.addPart({
+          name: `Contrafișă Diagonală #${dIdx + 1}`,
+          length: 40, width: 80, thickness: 520,
+          pos: { x: dir * L * 0.18, y: H * 0.52, z: 0 },
+          rot: { z: dir * 0.65 },
+          explodeDir: { x: dir * 0.6, y: -1, z: 0 },
+          material: woodMat
+        });
+      });
+
     } else {
       // Căutăm definiția planului pentru a prelua arhetipul și dimensiunile
       const planDef = getPlanById(planId);
