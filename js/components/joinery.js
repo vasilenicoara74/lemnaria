@@ -349,17 +349,17 @@ export function calculateJoinery({
   };
 }
 
-// Desenează pe canvas planul de găurire cotat milimetric al Montantului Lateral
+// Desenează pe canvas planul de găurire cotat milimetric conform normelor industriale de mobilier
 export function renderDrillingBlueprint(canvas, cabinetData, joineryData) {
   const ctx = canvas.getContext('2d');
   const w = canvas.width;
   const h = canvas.height;
 
-  // Background hârtie milimetrică
+  // Background hârtie tehnică
   ctx.fillStyle = '#faf8f5';
   ctx.fillRect(0, 0, w, h);
 
-  // Grid tehnic
+  // Grid tehnic fin
   ctx.strokeStyle = '#eee5d8';
   ctx.lineWidth = 1;
   for (let x = 0; x < w; x += 20) {
@@ -374,132 +374,173 @@ export function renderDrillingBlueprint(canvas, cabinetData, joineryData) {
   ctx.lineWidth = 2;
   ctx.strokeRect(10, 10, w - 20, h - 20);
 
-  // Cartuș tehnic în partea inferioară stânga-dreapta dedicată
-  const cartH = 54;
+  // 1. ZONA DESEN PANOU (Stânga)
+  // Panoul lateral: lățime = depth, înălțime = height
+  const panelDrawLeft = 70;
+  const panelDrawTop = 50;
+  const panelDrawMaxW = 150;
+  const panelDrawMaxH = h - 140;
+
+  const scale = Math.min(panelDrawMaxW / cabinetData.depth, panelDrawMaxH / cabinetData.height);
+  const pw = cabinetData.depth * scale;
+  const ph = cabinetData.height * scale;
+
+  const originX = panelDrawLeft;
+  const originY = panelDrawTop;
+
+  // Desenare Panou Corp Lemn
+  ctx.fillStyle = '#e8d8c3';
+  ctx.strokeStyle = '#2b2118';
+  ctx.lineWidth = 2;
+  ctx.fillRect(originX, originY, pw, ph);
+  ctx.strokeRect(originX, originY, pw, ph);
+
+  // Origine (0, 0) Marcată în colțul stânga-jos (Față / Bază)
+  const oPx = originX;
+  const oPy = originY + ph;
+  ctx.strokeStyle = '#e65100';
+  ctx.fillStyle = '#e65100';
+  ctx.lineWidth = 2;
+  // Săgeată axa Z (orizontală - adâncime)
+  ctx.beginPath(); ctx.moveTo(oPx, oPy); ctx.lineTo(oPx + 35, oPy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(oPx + 35, oPy); ctx.lineTo(oPx + 28, oPy - 3); ctx.lineTo(oPx + 28, oPy + 3); ctx.fill();
+  // Săgeată axa Y (verticală - înălțime)
+  ctx.beginPath(); ctx.moveTo(oPx, oPy); ctx.lineTo(oPx, oPy - 35); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(oPx, oPy - 35); ctx.lineTo(oPx - 3, oPy - 28); ctx.lineTo(oPx + 3, oPy - 28); ctx.fill();
+
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('Z (Adâncime)', oPx + 10, oPy + 12);
+  ctx.fillText('Y', oPx - 12, oPy - 25);
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('(0,0)', oPx - 24, oPy + 12);
+
+  // Etichete Margini Panou
+  ctx.fillStyle = '#2b6cb0';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText('FAȚĂ CORP (Cant vizibil)', originX, originY - 10);
+  ctx.fillStyle = '#666';
+  ctx.fillText('SPATE (Nut PFL)', originX + pw - 75, originY - 10);
+
+  // Cota Lățime Panou (Adâncime)
+  drawDim(ctx, originX, originY - 4, originX + pw, originY - 4, `${cabinetData.depth} mm`);
+  // Cota Înălțime Panou
+  drawDim(ctx, originX - 22, originY, originX - 22, originY + ph, `${cabinetData.height} mm`, true);
+
+  // Linie punctată Ax Balamale / Găuri Față la 37mm
+  const ax37Px = originX + 37 * scale;
+  ctx.strokeStyle = '#2b6cb0';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(ax37Px, originY);
+  ctx.lineTo(ax37Px, originY + ph);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#2b6cb0';
+  ctx.font = 'bold 8px monospace';
+  ctx.fillText('37mm', ax37Px - 10, originY + ph + 16);
+
+  // Linie punctată Ax Spate la 37mm de la spate
+  const axBackPx = originX + (cabinetData.depth - 37) * scale;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  ctx.moveTo(axBackPx, originY);
+  ctx.lineTo(axBackPx, originY + ph);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillText('37mm', axBackPx - 10, originY + ph + 16);
+
+  // 2. DESENARE GĂURI ȘI LITERE DE IDENTIFICARE (A, B, C...)
+  // Sortăm punctele după Y crescător de la bază la top
+  const sortedPoints = [...joineryData.sideDrillingPoints].sort((a, b) => a.y - b.y || a.z - b.z);
+
+  sortedPoints.forEach((pt, idx) => {
+    const letter = String.fromCharCode(65 + (idx % 26)) + (idx >= 26 ? Math.floor(idx / 26) : '');
+    pt.refLetter = letter;
+
+    const gx = originX + pt.z * scale;
+    const gy = originY + (cabinetData.height - pt.y) * scale;
+
+    const isHinge = pt.type === 'hinge';
+
+    // Punct gaură
+    ctx.beginPath();
+    ctx.arc(gx, gy, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = isHinge ? '#2e9d5b' : '#d64545';
+    ctx.fill();
+    ctx.strokeStyle = '#1f1a16';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Marcaj cruce fin
+    ctx.beginPath();
+    ctx.moveTo(gx - 4, gy); ctx.lineTo(gx + 4, gy);
+    ctx.moveTo(gx, gy - 4); ctx.lineTo(gx, gy + 4);
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+
+    // Identificator literă mică lângă gaură
+    ctx.font = 'bold 9px monospace';
+    ctx.fillStyle = isHinge ? '#1e7843' : '#b22222';
+    ctx.fillText(letter, gx + 5, gy - 3);
+  });
+
+  // 3. TABEL INDUSTRIAL DE COORDONATE PE CANVAS (Dreapta)
+  const tblX = Math.max(originX + pw + 35, w - 215);
+  const tblY = 35;
+  const tblW = w - tblX - 15;
+
+  ctx.fillStyle = '#2b2118';
+  ctx.fillRect(tblX, tblY, tblW, 18);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px monospace';
+  ctx.fillText('REF', tblX + 4, tblY + 12);
+  ctx.fillText('TIP GAURĂ', tblX + 28, tblY + 12);
+  ctx.fillText('Y (mm)', tblX + 105, tblY + 12);
+  ctx.fillText('Z (mm)', tblX + 145, tblY + 12);
+
+  const rowH = 14;
+  sortedPoints.slice(0, 24).forEach((pt, rIdx) => {
+    const curY = tblY + 18 + rIdx * rowH;
+    ctx.fillStyle = rIdx % 2 === 0 ? '#f7f3ee' : '#ffffff';
+    ctx.fillRect(tblX, curY, tblW, rowH);
+
+    ctx.strokeStyle = '#e6dfd5';
+    ctx.strokeRect(tblX, curY, tblW, rowH);
+
+    const isHinge = pt.type === 'hinge';
+    ctx.fillStyle = isHinge ? '#1e7843' : '#b22222';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(pt.refLetter, tblX + 5, curY + 10);
+
+    ctx.fillStyle = '#333';
+    ctx.font = '8px sans-serif';
+    const typeLabel = isHinge ? 'Ø5 Balama' : `Ø${pt.diam} Confirmat`;
+    ctx.fillText(typeLabel, tblX + 28, curY + 10);
+
+    ctx.font = '9px monospace';
+    ctx.fillText(String(Math.round(pt.y)), tblX + 107, curY + 10);
+    ctx.fillText(String(Math.round(pt.z)), tblX + 147, curY + 10);
+  });
+
+  // Cartuș Tehnic în partea de jos
+  const cartH = 42;
   const cartY = h - 14 - cartH;
   const cartX = 14;
   const cartW = w - 28;
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(cartX, cartY, cartW, cartH);
   ctx.strokeStyle = '#2b2118';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.2;
   ctx.strokeRect(cartX, cartY, cartW, cartH);
 
   ctx.fillStyle = '#1f1a16';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText('LEMNARIA CAD • PLAN DE GĂURIRE COTAT', cartX + 10, cartY + 16);
-  ctx.font = '9px sans-serif';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('LEMNARIA CAD • PLAN TEHNIC GĂURIRE MONTANT LATERAL', cartX + 10, cartY + 15);
+  ctx.font = '8.5px sans-serif';
   ctx.fillStyle = '#555';
-  ctx.fillText(`Piesă: Montant Lateral | Îmbinare: ${joineryData.joineryType.toUpperCase()} | Grosime: ${cabinetData.thickness} mm`, cartX + 10, cartY + 32);
-  ctx.fillText(`Dimensiuni panou debitat: H=${cabinetData.height} mm × Lățime=${cabinetData.depth} mm | Scară automată`, cartX + 10, cartY + 46);
-
-  // Legendă tip găuri în dreapta cartușului
-  ctx.fillStyle = '#d64545';
-  ctx.fillRect(cartX + cartW - 130, cartY + 10, 8, 8);
-  ctx.fillStyle = '#222';
-  ctx.font = '9px sans-serif';
-  ctx.fillText('Îmbinare structurală', cartX + cartW - 118, cartY + 17);
-
-  ctx.fillStyle = '#2e9d5b';
-  ctx.fillRect(cartX + cartW - 130, cartY + 28, 8, 8);
-  ctx.fillStyle = '#222';
-  ctx.fillText('Plăcuță balama', cartX + cartW - 118, cartY + 35);
-
-  // Zona dedicată desenului panoului
-  const drawAreaTop = 45;
-  const drawAreaBottom = cartY - 30;
-  const drawAreaLeft = 65;
-  const drawAreaRight = w - 170; // spațiu generos pe dreapta pentru etichete și cote
-
-  const maxDrawW = drawAreaRight - drawAreaLeft;
-  const maxDrawH = drawAreaBottom - drawAreaTop;
-
-  const scale = Math.min(maxDrawW / cabinetData.depth, maxDrawH / cabinetData.height) * 0.92;
-  const panelPixelW = cabinetData.depth * scale;
-  const panelPixelH = cabinetData.height * scale;
-
-  const originX = drawAreaLeft;
-  const originY = drawAreaTop;
-
-  // Desen panou lateral de lemn
-  ctx.fillStyle = '#e8d8c3';
-  ctx.strokeStyle = '#3a2b1c';
-  ctx.lineWidth = 2;
-  ctx.fillRect(originX, originY, panelPixelW, panelPixelH);
-  ctx.strokeRect(originX, originY, panelPixelW, panelPixelH);
-
-  // Etichete muchii
-  ctx.fillStyle = '#d9651e';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.fillText('▲ FAȚĂ (Muchie căntuită)', originX, originY - 14);
-  ctx.fillStyle = '#7a6f66';
-  ctx.fillText('SPATE (Nut/Falt PFL) ▲', originX + panelPixelW - 110, originY - 14);
-
-  // Linii de cotă exterioară
-  drawDim(ctx, originX, originY - 6, originX + panelPixelW, originY - 6, `${cabinetData.depth} mm`);
-  drawDim(ctx, originX - 24, originY, originX - 24, originY + panelPixelH, `${cabinetData.height} mm`, true);
-
-  // Ax standard 37mm linie punctată
-  const ax37X = originX + 37 * scale;
-  ctx.strokeStyle = '#2b6cb0';
-  ctx.lineWidth = 1;
-  ctx.setLineDash([4, 3]);
-  ctx.beginPath();
-  ctx.moveTo(ax37X, originY);
-  ctx.lineTo(ax37X, originY + panelPixelH);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.fillStyle = '#2b6cb0';
-  ctx.font = 'bold 9px monospace';
-  ctx.fillText('Ax 37mm', ax37X - 16, originY + panelPixelH + 14);
-
-  // Sortăm găurile descrescător după Y pentru etichetare curată pe coloană
-  const sortedPts = [...joineryData.sideDrillingPoints].sort((a, b) => b.y - a.y);
-  const totalPts = sortedPts.length;
-  const labelColX = originX + panelPixelW + 35;
-  const labelStepY = Math.min(26, Math.max(16, (panelPixelH + 20) / Math.max(totalPts, 1)));
-
-  sortedPts.forEach((pt, idx) => {
-    const px = originX + pt.z * scale;
-    const py = originY + (cabinetData.height - pt.y) * scale;
-    const isHinge = pt.type === 'hinge';
-
-    // Punct gaură
-    ctx.beginPath();
-    ctx.arc(px, py, 4, 0, Math.PI * 2);
-    ctx.fillStyle = isHinge ? '#2e9d5b' : '#d64545';
-    ctx.fill();
-    ctx.strokeStyle = '#1f1a16';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // Marcaj cruce pe axul găurii
-    ctx.beginPath();
-    ctx.moveTo(px - 6, py); ctx.lineTo(px + 6, py);
-    ctx.moveTo(px, py - 6); ctx.lineTo(px, py + 6);
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    // Lider line spre etichetă din coloana dreaptă (pentru a evita suprapunerea pe desen)
-    const targetLabelY = originY + 12 + idx * labelStepY;
-
-    ctx.strokeStyle = isHinge ? '#2e9d5b' : '#d64545';
-    ctx.lineWidth = 0.9;
-    ctx.setLineDash([2, 2]);
-    ctx.beginPath();
-    ctx.moveTo(px + 5, py);
-    ctx.lineTo(labelColX - 6, targetLabelY);
-    ctx.lineTo(labelColX, targetLabelY);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // Text etichetă clar și aerisit
-    ctx.font = 'bold 9px monospace';
-    ctx.fillStyle = isHinge ? '#1e7843' : '#b22222';
-    ctx.fillText(`Ø${pt.diam} Y=${pt.y} Z=${pt.z}`, labelColX + 3, targetLabelY + 3);
-  });
+  ctx.fillText(`Dimensiune panou: H=${cabinetData.height} mm × Lățime=${cabinetData.depth} mm (T=${cabinetData.thickness}mm) | Îmbinare: ${joineryData.joineryType.toUpperCase()}`, cartX + 10, cartY + 28);
+  ctx.fillText(`Origine cote: Colțul Stânga-Jos (Z=0 la fațadă, Y=0 la bază) | Toate găurile sunt definite în tabelul din dreapta.`, cartX + 10, cartY + 39);
 }
 
 function drawDim(ctx, x1, y1, x2, y2, text, vertical = false) {
@@ -516,13 +557,13 @@ function drawDim(ctx, x1, y1, x2, y2, text, vertical = false) {
   if (vertical) {
     ctx.beginPath(); ctx.moveTo(x1 - 3, y1); ctx.lineTo(x1 + 3, y1); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x2 - 3, y2); ctx.lineTo(x2 + 3, y2); ctx.stroke();
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'right';
     ctx.fillText(text, x1 - 5, (y1 + y2) / 2 + 3);
   } else {
     ctx.beginPath(); ctx.moveTo(x1, y1 - 3); ctx.lineTo(x1, y1 + 3); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x2, y2 - 3); ctx.lineTo(x2, y2 + 3); ctx.stroke();
-    ctx.font = 'bold 10px monospace';
+    ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(text, (x1 + x2) / 2, y1 - 4);
   }

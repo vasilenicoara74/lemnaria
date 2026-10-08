@@ -456,18 +456,49 @@ class LemnariaApp {
         </button>
       </div>
 
-      <!-- Plan Găurire Cotat Canvas -->
+      <!-- Plan Găurire Cotat Canvas & Tabel Coordonate CNC/Atelier -->
       <div class="card" style="margin:12px 0;background:#fff;padding:10px;">
         <div class="row between" style="margin-bottom:6px;">
-          <h4 style="margin:0;">Plan Găurire Cotat – Montant Lateral</h4>
-          <span class="muted small">Ax 37mm • Ø${joinery.joineryType === 'confirmat' ? '5/7' : '8'}mm</span>
+          <h4 style="margin:0;">Desen Tehnic Cotat – Montant Lateral</h4>
+          <span class="muted small">Origine: Colț Față-Bază (0, 0)</span>
         </div>
         <div style="background:#faf8f5;border-radius:10px;border:1px solid var(--line);text-align:center;">
-          <canvas id="drillingCanvas" width="460" height="520" style="width:100%;height:auto;display:block;"></canvas>
+          <canvas id="drillingCanvas" width="520" height="520" style="width:100%;height:auto;display:block;"></canvas>
         </div>
         <button class="btn sm ghost block" id="downloadDrillingPlanBtn" style="margin-top:8px;">
-          💾 Salvează Desenul Cotat de Găurire
+          💾 Salvează Desenul Cotat de Găurire (.PNG)
         </button>
+
+        <!-- Tabel de Coordonate Milimetrice Găuri (Tabel de găurire) -->
+        <div style="margin-top:14px;">
+          <h5 style="margin:0 0 6px;font-size:13px;">📋 Tabel de Găurire (Coordonate Milimetrice Raportate la Originea 0,0)</h5>
+          <div style="font-size:11px;color:#666;margin-bottom:8px;">
+            • <b>Axa Y</b>: măsurată pe înălțime de la marginea de jos a panoului (0 = baza corpului)<br>
+            • <b>Axa Z</b>: măsurată pe adâncime de la fațadă (0 = cantul frontal căntuit, 37mm = ax standard)
+          </div>
+          <table class="t" style="font-size:12px;">
+            <thead>
+              <tr style="background:#f4eee8;">
+                <th>Ref</th>
+                <th>Operațiune / Punct</th>
+                <th>Y (Înălțime)</th>
+                <th>Z (Adâncime)</th>
+                <th>Burghiu / Adâncime</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${joinery.sideDrillingPoints.map((pt, idx) => `
+                <tr>
+                  <td><b style="color:${pt.type === 'hinge' ? '#2e9d5b' : '#d64545'};">${pt.refLetter || String.fromCharCode(65 + (idx % 26))}</b></td>
+                  <td>${pt.name}</td>
+                  <td><b>${Math.round(pt.y)} mm</b></td>
+                  <td><b>${Math.round(pt.z)} mm</b></td>
+                  <td>Ø${pt.diam}mm × ${pt.depth}mm</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Necesar Feronerie -->

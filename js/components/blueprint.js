@@ -306,7 +306,7 @@ export async function exportTechnicalPDF({ plan, params = {}, woodId = 'pin', sn
   p2Y += 10;
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('2. Ghid de Execuție Pas cu Pas', 15, p2Y);
+  doc.text('2. Ghid de Execuție & Asamblare Pas cu Pas', 15, p2Y);
   p2Y += 8;
 
   (plan.steps || []).forEach(s => {
@@ -335,6 +335,69 @@ export async function exportTechnicalPDF({ plan, params = {}, woodId = 'pin', sn
       p2Y += 5;
     }
     p2Y += 3;
+  });
+
+  // Pagina 3: Desene Tehnice Individuale pentru Fiecare Piesă (Fișe de Fabricație)
+  doc.addPage();
+  doc.setFillColor(31, 26, 22);
+  doc.rect(0, 0, 210, 16, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('FIȘE TEHNICE INDIVIDUALE PE ELEMENT (DETALIU DEBITARE & GĂURIRE)', 15, 11);
+
+  let p3Y = 26;
+  bom.parts.forEach((p, idx) => {
+    if (p3Y > 240) {
+      doc.addPage();
+      doc.setFillColor(31, 26, 22);
+      doc.rect(0, 0, 210, 16, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('FIȘE TEHNICE INDIVIDUALE PE ELEMENT (CONTINUARE)', 15, 11);
+      p3Y = 26;
+    }
+
+    // Chenar piesă individuală
+    doc.setFillColor(250, 248, 245);
+    doc.roundedRect(15, p3Y, 180, 42, 2, 2, 'F');
+    doc.setDrawColor(200, 190, 180);
+    doc.roundedRect(15, p3Y, 180, 42, 2, 2, 'S');
+
+    // Titlu element
+    doc.setTextColor(31, 26, 22);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Element #${p.id}: ${p.name} (${p.qty} bucăți)`, 20, p3Y + 8);
+
+    // Mini-desen cotat al piesei
+    const compW = Math.min(65, Math.max(35, (p.length / 1000) * 50));
+    const compH = Math.min(22, Math.max(12, (p.width / 1000) * 35));
+    const cX = 22;
+    const cY = p3Y + 14;
+
+    doc.setFillColor(232, 216, 195);
+    doc.setDrawColor(58, 43, 28);
+    doc.rect(cX, cY, compW, compH, 'FD');
+
+    // Cote pe mini-desen
+    doc.setTextColor(217, 101, 30);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${p.length} mm`, cX + compW / 2, cY - 2, { align: 'center' });
+    doc.text(`${p.width} mm`, cX + compW + 2, cY + compH / 2 + 1);
+
+    // Specificații tehnice de montaj
+    doc.setTextColor(60, 50, 40);
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`• Dimensiuni brute debitare: ${p.length} × ${p.width} × ${p.thickness} mm`, 105, p3Y + 15);
+    doc.text(`• Grosime material panou: T = ${p.thickness} mm`, 105, p3Y + 22);
+    doc.text(`• Prelucrare muchii: Cant ABS 0.4mm / Bizotare fină R2`, 105, p3Y + 29);
+    doc.text(`• Sistem fixare: Găuri de ax la 37 mm de la capete`, 105, p3Y + 36);
+
+    p3Y += 48;
   });
 
   // Footer cu copyright & număr pagină
