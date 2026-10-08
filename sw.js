@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lemnaria-v13';
+const CACHE_NAME = 'lemnaria-v14';
 const ASSETS = [
   './',
   './index.html',

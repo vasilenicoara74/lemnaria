@@ -157,7 +157,7 @@ class LemnariaApp {
           ${PLANS.filter(p => p.difficulty === 'Începător').slice(0, 8).map(p => `
             <div class="pcard" data-id="${p.id}" style="cursor:pointer;">
               <div style="position:relative;">
-                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy">
+                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';">
                 <button class="icon-btn" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,.92);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.2);padding:0;" title="Deschide în 3D">
                   ▶
                 </button>
@@ -184,7 +184,7 @@ class LemnariaApp {
           ${PLANS.filter(p => p.difficulty === 'Mediu').slice(0, 8).map(p => `
             <div class="pcard" data-id="${p.id}" style="cursor:pointer;">
               <div style="position:relative;">
-                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy">
+                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';">
                 <button class="icon-btn" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,.92);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.2);padding:0;" title="Deschide în 3D">
                   ▶
                 </button>
@@ -211,7 +211,7 @@ class LemnariaApp {
           ${PLANS.filter(p => p.difficulty === 'Avansat').slice(0, 8).map(p => `
             <div class="pcard" data-id="${p.id}" style="cursor:pointer;">
               <div style="position:relative;">
-                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy">
+                <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';">
                 <button class="icon-btn" style="position:absolute;bottom:10px;right:10px;background:rgba(255,255,255,.92);width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.2);padding:0;" title="Deschide în 3D">
                   ▶
                 </button>
@@ -291,7 +291,7 @@ class LemnariaApp {
 
     let html = currentBatch.map(p => `
       <div class="gcard" data-id="${p.id}" style="cursor:pointer;">
-        <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy">
+        <img class="thumb" src="${p.image}" alt="${p.roTitle}" loading="lazy" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';">
         <div class="t">
           <div style="font-weight:700;font-size:13px;line-height:1.2;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.roTitle}">${p.roTitle}</div>
           <div class="row between muted small" style="font-size:11px;">
@@ -364,7 +364,7 @@ class LemnariaApp {
 
     this.openSheet(`
       <div style="position:relative;">
-        <img src="${plan.image}" alt="${plan.roTitle}" style="width:100%;height:180px;object-fit:cover;border-radius:14px;">
+        <img src="${plan.image}" alt="${plan.roTitle}" style="width:100%;height:180px;object-fit:cover;border-radius:14px;" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1533090481720-856c6e3c1fdc?auto=format&fit=crop&w=800&q=80';">
         <span class="badge o" style="position:absolute;top:10px;right:10px;">${plan.difficulty}</span>
       </div>
 
