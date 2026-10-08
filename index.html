@@ -39,17 +39,24 @@
   <div id="sheet" class="sheet hidden"><div class="sheet-body"></div></div>
 
   <script>
+    // Șterge automat toate cache-urile vechi la deschidere pentru a forța versiunea nouă imediat
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        names.forEach((name) => {
+          if (name !== 'lemnaria-v10') caches.delete(name);
+        });
+      });
+    }
     if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((reg) => reg.update());
+      });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=9')
-          .then((reg) => {
-            reg.update();
-            console.log('Lemnaria Service Worker actualizat v9!');
-          })
-          .catch((err) => console.warn('Service Worker info:', err));
+        navigator.serviceWorker.register('./sw.js?v=10')
+          .catch((err) => console.warn('SW:', err));
       });
     }
   </script>
-  <script type="module" src="js/app.js?v=9"></script>
+  <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>
