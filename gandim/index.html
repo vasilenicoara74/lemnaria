@@ -1,0 +1,658 @@
+<!doctype html><html lang="ro"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta property="og:title" content="Gândim la fel?"><meta property="og:description" content="Joc pe telefon pentru 2–8 jucători: aceeași întrebare, un răspuns în 20 de secunde, puncte dacă gândiți la fel."><meta name="theme-color" content="#0B0820"><title>Gândim la fel?</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Outfit:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: o singură coloană de telefon, ecrane care se schimbă după faza jocului; aspect de firmă neon, noaptea. */
+:root{
+  --bg:#0B0820; --bg2:#1A1040; --panel:#140F33; --line:#2E2560;
+  --fg:#F4F1FF; --mute:#A8A0CC;
+  --pink:#FF3DA5; --cyan:#3DE8FF; --yellow:#FFE45E; --green:#4DFF9E; --orange:#FF9E5E; --violet:#9D7BFF; --red:#FF5A6E;
+  --f-sign:"Big Shoulders Display","Arial Narrow","Roboto Condensed",Impact,sans-serif;
+  --f-body:"Outfit","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);background-image:radial-gradient(120% 60% at 50% -10%,rgba(157,123,255,.28),transparent 60%),linear-gradient(var(--bg),var(--bg2));background-attachment:fixed;color:var(--fg);font:16px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 28px}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;border-radius:10px}
+h1,h2,h3{margin:0;font-family:var(--f-sign);font-weight:800;letter-spacing:.01em;line-height:1}
+.neon{color:#fff;text-shadow:0 0 6px var(--c,var(--pink)),0 0 18px var(--c,var(--pink)),0 0 36px var(--c,var(--pink))}
+.neon-pink{--c:var(--pink);color:#FFD3EA}.neon-cyan{--c:var(--cyan);color:#D6FBFF}.neon-yellow{--c:var(--yellow);color:#FFF6C7}.neon-green{--c:var(--green);color:#D9FFEA}
+.kick{font:700 12px var(--f-body);letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.mute{color:var(--mute)} .small{font-size:14px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:10px;align-items:center}
+.grow{flex:1;min-width:0}
+.card{background:rgba(20,15,51,.78);border:1.5px solid var(--line);border-radius:18px;padding:16px;backdrop-filter:blur(4px)}
+.glowbox{border-color:var(--c,var(--pink));box-shadow:0 0 0 1px color-mix(in srgb,var(--c,var(--pink)) 40%,transparent),0 0 22px -4px var(--c,var(--pink)),inset 0 0 22px -12px var(--c,var(--pink))}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:56px;padding:12px 18px;border-radius:16px;border:2px solid var(--c,var(--pink));background:transparent;color:#fff;font:800 22px var(--f-sign);letter-spacing:.06em;text-transform:uppercase;box-shadow:0 0 18px -4px var(--c,var(--pink)),inset 0 0 18px -8px var(--c,var(--pink));text-shadow:0 0 10px var(--c,var(--pink))}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.35;cursor:not-allowed}
+.btn.solid{background:var(--c,var(--pink));color:#1A0B1F;text-shadow:none}
+.btn.cyan{--c:var(--cyan)}.btn.yellow{--c:var(--yellow)}.btn.green{--c:var(--green)}.btn.violet{--c:var(--violet)}
+.btn.sm{min-height:44px;font-size:17px;border-radius:12px}
+.link{background:none;border:0;color:var(--mute);text-decoration:underline;text-underline-offset:4px;padding:10px;font-size:15px}
+input.field{width:100%;min-height:54px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:#0E0A26;font-size:19px;color:var(--fg)}
+input.field:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 16px -4px var(--cyan)}
+input.code{text-transform:uppercase;letter-spacing:.3em;text-align:center;font:800 26px var(--f-sign)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:6px 14px;border-radius:999px;border:1.5px solid var(--line);background:#0E0A26;font-weight:600;font-size:15px;color:var(--mute)}
+.chip[aria-pressed="true"]{border-color:var(--c,var(--cyan));color:#fff;box-shadow:0 0 14px -4px var(--c,var(--cyan));background:color-mix(in srgb,var(--c,var(--cyan)) 18%,#0E0A26)}
+.dot{width:30px;height:30px;border-radius:50%;border:2px solid transparent;padding:0}
+.dot[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 12px var(--c)}
+.logo{text-align:center;margin:20px 0 6px}
+.logo h1{font-size:clamp(54px,17vw,82px)}
+.logo .sub{margin-top:10px}
+.players{display:flex;flex-direction:column;gap:8px}
+.pl{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:#0E0A26;border:1px solid var(--line)}
+.pl .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:800 18px var(--f-sign);color:#1A0B1F;flex:0 0 auto}
+.pl .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl .tag{font-size:12px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase}
+.pl .pts{font:800 24px var(--f-sign);font-variant-numeric:tabular-nums}
+.pl.done{border-color:var(--green)}
+.codebig{font:900 clamp(56px,18vw,84px)/1 var(--f-sign);letter-spacing:.18em;text-align:center}
+.prompt{font:800 clamp(30px,9vw,42px)/1.08 var(--f-sign);text-align:center;text-wrap:balance;margin:6px 0}
+.catchip{display:inline-block;font:700 12px var(--f-body);letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;border-radius:999px;border:1.5px solid var(--c);color:var(--c)}
+.timer{position:relative;height:10px;border-radius:999px;background:#0E0A26;border:1px solid var(--line);overflow:hidden}
+.timer i{position:absolute;inset:0;transform-origin:left;background:linear-gradient(90deg,var(--cyan),var(--pink));box-shadow:0 0 12px var(--pink)}
+.tnum{font:800 28px var(--f-sign);font-variant-numeric:tabular-nums;min-width:2.2em;text-align:right}
+.group{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;border:1.5px solid var(--line);background:#0E0A26}
+.group.match{--c:var(--green);border-color:var(--green);box-shadow:0 0 20px -6px var(--green)}
+.group.sel{outline:3px dashed var(--yellow);outline-offset:2px}
+.group .ans{font:800 30px/1 var(--f-sign);letter-spacing:.02em;text-transform:uppercase;overflow-wrap:anywhere}
+.group .who{display:flex;flex-wrap:wrap;gap:6px}
+.group .who span{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;background:#1C1545}
+.plus{font:900 30px var(--f-sign);color:var(--green);text-shadow:0 0 12px var(--green)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:200px;margin-top:6px}
+.pod{flex:1;max-width:120px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
+.pod .nm{font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod .blk{width:100%;border-radius:12px 12px 0 0;display:grid;place-items:center;font:900 34px var(--f-sign);border:2px solid var(--c);box-shadow:0 0 18px -4px var(--c)}
+.status{font-size:13px;color:var(--mute);text-align:center;min-height:1.2em}
+.banner{padding:10px 12px;border-radius:12px;border:1px dashed var(--line);font-size:14px;color:var(--mute)}
+.hand{text-align:center;padding-top:30px}
+.hand .who{font:900 clamp(52px,16vw,76px)/1 var(--f-sign)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:36px}
+.top .kick{margin:0}
+.fade{animation:fade .35s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pop{animation:pop .5s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head><body><canvas id="stars" aria-hidden="true"></canvas>
+<div class="wrap"><main id="app" aria-live="polite"></main></div>
+
+<script>
+'use strict';
+const Q = {"clasic": ["Un fruct galben", "Ceva ce găsești în orice poșetă", "Cel mai bun topping pe pizza", "Un animal de companie", "Ceva ce iei cu tine la plajă", "O culoare de mașină", "Un sport cu minge", "Cea mai bună aromă de înghețată", "Un supererou", "Primul lucru făcut după trezire", "O legumă verde", "O aplicație pe care o deschizi zilnic", "Un instrument muzical", "Ceva ce ai mereu în frigider", "Un animal de la fermă", "O țară în care ai vrea să trăiești", "Un desert de zi de naștere", "O meserie periculoasă", "Ceva ce pierzi mereu prin casă", "Un personaj Disney", "O băutură caldă", "Ceva din trusa de prim ajutor", "Un sos pentru cartofi prăjiți", "Cea mai enervantă insectă", "Un animal din junglă", "O mâncare care miroase urât", "Un brand de telefoane", "Ce faci când te plictisești", "O jucărie din copilărie", "Ceva rotund", "Un mic dejun clasic", "Ceva ce uiți acasă când pleci", "Camera din casă unde stai cel mai mult", "Un film de Crăciun", "Ce faci duminica", "O pasăre", "Ce cumperi de la benzinărie", "Cel mai bun fel de cartofi", "Un desen animat din copilărie", "Ceva roșu", "Un sunet care te enervează", "Cea mai bună gustare la film", "Ceva lipicios", "Un fel de mâncare cu brânză", "Un animal care te sperie"], "noapte": ["Ce comanzi la shaorma la 3 noaptea", "Cea mai bună melodie de karaoke", "Ce pierzi cel mai des la petreceri", "Un cocktail celebru", "Un leac pentru mahmureală", "Prima băutură comandată la bar", "Un joc de băut", "Ce faci când nu intri în club", "Piesa care pornește orice petrecere", "Primul lucru făcut acasă după club", "Un shot popular", "Cum ajungi acasă la 4 dimineața", "Cea mai rea combinație de băuturi", "Ce găsești în buzunare a doua zi", "O scuză ca să pleci mai devreme", "Un dans de petrecere", "Un semn că ai băut prea mult", "Ce comanzi la fast-food noaptea", "O bere populară", "Un DJ celebru", "Ce postezi pe Instagram dintr-o seară", "Cel mai bun mixer pentru vodcă", "Un costum clasic de Halloween", "Ultima piesă la final de petrecere", "Ce regreți dimineața după chef", "Ce faci în taxi spre casă", "Ceva nelipsit la un chef acasă", "Gustarea perfectă la bere", "O temă de petrecere costumată", "Un festival de muzică la care ai merge", "Un artist pe care îl cânți beat", "Ce faci când se închide barul", "Unde stai la o petrecere în casă", "Un tip de vin", "Ce bei a doua zi după chef", "Un pas de dans penibil", "Ce ai în mână pe ringul de dans", "Ce faci când se aprind luminile în club", "Cine adoarme primul la petrecere", "Ce strigi când începe piesa ta preferată"], "romania": ["Cel mai bun fel la nuntă", "Un oraș de mare", "Ce face soacra prima dată când intră în casă", "O manea celebră", "Cel mai iconic personaj din Las Fierbinți", "Ce mănânci de Paște", "Un fel de mâncare de Crăciun", "Ce cumperi de la Lidl de fiecare dată", "O stațiune montană", "Ceva ce bunica îți dă la plecare", "Cu ce mănânci micii", "Un oraș din Moldova", "O băutură tradițională românească", "Ce spui când cineva te taie în trafic", "Un cântăreț român celebru", "Un brand de bere românesc", "Ce aduci la grătarul de 1 Mai", "Un prezentator TV român", "Un dulce tradițional românesc", "Un film românesc celebru", "Ce dai cuiva de 8 Martie", "O superstiție românească", "Ce face un șofer român la semafor", "Ce se pune obligatoriu pe masa de sărbători", "O ciorbă", "Un fotbalist român legendar", "Ce găsești în cămara bunicii", "Ce întreabă rudele la masa de sărbători", "Un castel din România", "Unde pleacă românii în vacanță în străinătate", "Un personaj din poveștile românești", "Ce face nașul la nuntă", "Un snack românesc de pe stradă", "Ce ține un român în portbagaj", "Un obicei de Anul Nou", "Un loc emblematic din Iași", "Ce zice mama când pleci de acasă", "Un cuvânt pe care îl spun doar moldovenii", "Ce cumperi din piață sâmbăta dimineața", "Ce face tata când vede factura la curent"], "cuplu": ["Locul perfect pentru prima întâlnire", "Ce ceartă apare cel mai des într-un cuplu", "Cel mai romantic film", "Un cadou de aniversare", "Ce faceți duminică dimineața împreună", "Cine câștigă de obicei certurile", "Cel mai bun desert de împărțit", "Destinația ideală pentru luna de miere", "Un apelativ drăguț pentru partener", "Ce lasă bărbații mereu pe jos", "Ce durează mult înainte de a ieși", "Un serial de văzut împreună", "Ce face partenerul și te scoate din minți", "Cea mai bună cină romantică", "Ce furi din dulapul partenerului", "Un animal pe care l-ați lua împreună", "Ce trebuie făcut după o ceartă", "Un cântec pentru dansul mirilor", "Ce gătește el cel mai bine", "Activitatea perfectă pentru o seară acasă", "Ce face un bărbat răcit", "Răspunsul corect la „Cum arăt?”", "Un cadou de Valentine's Day", "Camera unde apar cele mai multe certuri", "O treabă casnică pe care o evită toți", "Ce pierde mereu partenerul", "Un weekend în doi, unde", "Cel mai enervant obicei în pat", "Ce comandați când nu vreți să gătiți", "Un cuplu celebru din filme", "Un emoji trimis zilnic partenerului", "Primul lucru observat la partener", "Ce ar face el singur acasă o zi", "Ce ar face ea singură acasă o zi", "Cea mai bună scuză pentru întârziere", "Ce cumpărați mereu în plus la supermarket", "Un joc de societate pentru doi", "Cel mai bun mod de a cere iertare", "Cine adoarme primul la film", "Ce faceți în prima zi de concediu"], "picant": ["Cel mai sexy accent", "Cea mai seducătoare mâncare", "Unde e cel mai bun loc pentru un sărut", "O piesă de îmbrăcăminte sexy la bărbați", "O piesă de îmbrăcăminte sexy la femei", "Un actor pe care îl găsești irezistibil", "O actriță considerată sex-simbol", "Cea mai sexy parte a corpului", "Melodia perfectă pentru o seară romantică", "Un miros care te atrage instant", "Ce face un bărbat sexy fără să știe", "Ce face o femeie sexy fără să știe", "Cea mai sexy meserie", "Un loc neobișnuit pentru un sărut", "Ce porți ca să impresionezi la întâlnire", "Cea mai bună replică de agățat", "O băutură care te face îndrăzneț", "Un compliment care topește pe oricine", "Ce observi primul la cineva atrăgător", "Cel mai fierbinte film romantic", "Cea mai sexy culoare de lenjerie", "Un dans senzual", "Ce gătești ca să seduci pe cineva", "O voce celebră foarte sexy", "Un fruct cu subînțeles", "Un loc pentru o escapadă romantică", "Un gest mic, dar foarte sexy", "Cel mai sexy personaj de desen animat", "Un emoji folosit pentru flirt", "Cel mai sexy sport de privit", "Cel mai sexy stil de barbă", "Cea mai sexy coafură la femei", "Ce pregătești în baie pentru o seară romantică", "Cel mai sexy instrument muzical", "Cea mai sexy mașină"]};
+const CATS = [
+  {id:'clasic', name:'Clasic', c:'var(--cyan)'},
+  {id:'noapte', name:'Noapte în oraș', c:'var(--violet)'},
+  {id:'romania', name:'România', c:'var(--yellow)'},
+  {id:'cuplu', name:'Cuplu', c:'var(--orange)'},
+  {id:'picant', name:'Picant', c:'var(--pink)'},
+];
+const COLORS = ['#FF3DA5','#3DE8FF','#FFE45E','#4DFF9E','#FF9E5E','#9D7BFF','#FF5A6E','#B8FF3D'];
+const MIZE = ['Micul dejun la pat, sâmbăta asta','Masaj de 10 minute','Alege filmul în seara asta','Speli vasele mâine','Faci cafeaua dimineață, o săptămână','Dansează pe o melodie aleasă de câștigător','Câștigătorul alege cina de mâine','Un compliment sincer pentru fiecare jucător'];
+
+/* ---------------- utilitare ---------------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = { get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+                set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} } };
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const ME = (() => { let id = null; try { id = sessionStorage.getItem('glf.id'); } catch(e){}
+  if (!id){ id = 'p' + Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem('glf.id', id); } catch(e){} } return id; })();
+
+function norm(s){
+  let t = String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  t = t.replace(/^(un|o|niste|cel|cea|cei|cele|la|pe|in) /, '');
+  t = t.split(' ').map(w => w.length > 4 ? w.replace(/(ului|ilor|elor|ul|le|lui)$/, '') : w).join(' ');
+  return t;
+}
+function lev(a, b){
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const d = Array.from({length: a.length + 1}, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function same(a, b){
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const L = Math.min(a.length, b.length);
+  return (L >= 4 && lev(a, b) <= 1) || (L >= 8 && lev(a, b) <= 2);
+}
+/* grupează răspunsurile și calculează punctele; merges = liste de chei unite manual */
+function score(raw, players, merges){
+  const groups = [];
+  for (const id of players){
+    const t = (raw[id] || '').trim(); if (!t) continue;
+    const k = norm(t); let g = groups.find(g => g.keys.some(x => same(x, k)));
+    if (!g){ g = {keys:[k], d:t, ps:[]}; groups.push(g); } else if (!g.keys.includes(k)) g.keys.push(k);
+    g.ps.push(id);
+  }
+  for (const m of merges || []){
+    const gs = groups.filter(g => g.keys.some(k => m.includes(k)));
+    if (gs.length > 1){ const base = gs[0]; for (const g of gs.slice(1)){ base.keys.push(...g.keys); base.ps.push(...g.ps); groups.splice(groups.indexOf(g), 1); } }
+  }
+  const n = players.length, pts = {};
+  for (const id of players) pts[id] = 0;
+  for (const g of groups){
+    const k = g.ps.length; g.pts = 0;
+    if (k >= 2){ g.pts = (k - 1) + (k === n ? 2 : 0); for (const id of g.ps) pts[id] = g.pts; }
+  }
+  groups.sort((a, b) => b.ps.length - a.ps.length);
+  const empty = players.filter(id => !(raw[id] || '').trim());
+  return {groups: groups.map(g => ({d: g.d, keys: g.keys, ps: g.ps, pts: g.pts})), pts, empty};
+}
+
+/* ---------------- stele ---------------- */
+(function stars(){
+  const cv = $('stars'), cx = cv.getContext('2d'); let pts = [];
+  function size(){ cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio; cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px';
+    pts = Array.from({length: 90}, () => ({x: Math.random(), y: Math.random() * .8, r: Math.random() * 1.2 + .3, p: Math.random() * 6})); draw(0); }
+  function draw(t){ cx.clearRect(0, 0, cv.width, cv.height);
+    for (const s of pts){ cx.globalAlpha = .25 + .45 * (0.5 + 0.5 * Math.sin(t / 1400 + s.p)); cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(s.x * cv.width, s.y * cv.height, s.r * devicePixelRatio, 0, 7); cx.fill(); } }
+  addEventListener('resize', size); size();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches){ const loop = t => { draw(t); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+})();
+
+/* ---------------- stare locală ---------------- */
+const S = {
+  screen: 'home', name: store.get('glf.name', ''), col: store.get('glf.col', COLORS[rnd(COLORS.length)]),
+  room: null, R: null, code: '', peers: [], g: null, isHost: false, answer: '', submittedFor: 0,
+  qStart: 0, seenPid: -1, revSentFor: 0, hostT: null, conn: false, err: '', bag: {}, sel: [],
+  local: null, rulesOpen: false,
+};
+let roomNS = null; // namespace-ul room
+let lastHtml = '', lastKey = '';
+
+/* ---- rețea publică: Supabase Realtime (presence), prin WebSocket direct, fără bibliotecă ---- */
+const SUPA = {url: 'https://iexpkympmecyjnsyyoso.supabase.co', key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlleHBreW1wbWVjeWpuc3l5b3NvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjU5MDcsImV4cCI6MjA5MTI0MTkwN30.LWHHPSNO5In-Lt44P6re15RLp4rIJDMmwFw79QVgRUg'};
+function supaNS(){
+  if (!/^https:\/\//.test(SUPA.url) || SUPA.key.startsWith('__')) return null;
+  let connected = false; const connSubs = [];
+  const setConn = v => { if (v !== connected){ connected = v; connSubs.forEach(f => { try { f(v); } catch(e){} }); } };
+  return {
+    onConnection(f){ connSubs.push(f); setTimeout(() => f(connected), 0); return () => {}; },
+    async join(name){
+      let ws = null, ref = 0, joinRef = null, hb = null, closed = false, mine = {}, joined = false, backoff = 1000;
+      const state = {}; const subs = [];
+      const wsUrl = SUPA.url.replace(/^https/, 'wss') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(SUPA.key) + '&vsn=1.0.0';
+      const topic = 'realtime:' + name;
+      const send = (event, payload, t) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({topic: t || topic, event, payload, ref: String(++ref), join_ref: joinRef})); };
+      const list = () => Object.keys(state).map(k => { const metas = state[k]; const m = metas[metas.length - 1] || {}; const p = Object.assign({}, m); delete p.phx_ref; delete p.phx_ref_prev;
+        return {peer: k, by: null, isMe: k === ME, sameTab: k === ME, kind: 'viewer', guest: false, presence: p, updatedAt: Date.now()}; });
+      const emit = () => { const peers = list(); subs.forEach(f => { try { f({peers, joined: [], left: [], updated: []}); } catch(e){} }); };
+      const track = () => { if (joined) send('presence', {type: 'presence', event: 'track', payload: mine}); };
+      function open(){
+        if (closed) return;
+        try { ws = new WebSocket(wsUrl); } catch(e){ setTimeout(open, backoff); return; }
+        ws.onopen = () => {
+          backoff = 1000; joinRef = String(++ref);
+          ws.send(JSON.stringify({topic, event: 'phx_join', ref: joinRef, join_ref: joinRef,
+            payload: {config: {broadcast: {self: false, ack: false}, presence: {key: ME}, private: false}, access_token: SUPA.key}}));
+          clearInterval(hb); hb = setInterval(() => send('heartbeat', {}, 'phoenix'), 25000);
+        };
+        ws.onmessage = ev => {
+          let m; try { m = JSON.parse(ev.data); } catch(e){ return; }
+          if (m.event === 'phx_reply' && m.ref === joinRef){
+            if (m.payload && m.payload.status === 'ok'){ joined = true; setConn(true); track(); }
+            else { setConn(false); }
+          } else if (m.event === 'presence_state'){
+            for (const k of Object.keys(state)) delete state[k];
+            Object.assign(state, Object.fromEntries(Object.entries(m.payload || {}).map(([k, v]) => [k, v.metas || []]))); emit();
+          } else if (m.event === 'presence_diff'){
+            const d = m.payload || {};
+            for (const [k, v] of Object.entries(d.leaves || {})){ const refs = (v.metas || []).map(x => x.phx_ref); if (state[k]){ state[k] = state[k].filter(x => !refs.includes(x.phx_ref)); if (!state[k].length) delete state[k]; } }
+            for (const [k, v] of Object.entries(d.joins || {})){ state[k] = (state[k] || []).concat(v.metas || []).slice(-1); }
+            emit();
+          } else if (m.event === 'phx_error' || m.event === 'phx_close'){ joined = false; setConn(false); }
+        };
+        ws.onclose = () => { joined = false; setConn(false); clearInterval(hb); if (!closed){ setTimeout(open, backoff); backoff = Math.min(backoff * 2, 10000); } };
+        ws.onerror = () => { try { ws.close(); } catch(e){} };
+      }
+      open();
+      let pending = null;
+      return {
+        name,
+        presence(patch){
+          mine = Object.assign({}, mine);
+          for (const k in patch){ if (patch[k] === null) delete mine[k]; else mine[k] = patch[k]; }
+          // presence local imediat, trimis comasat
+          state[ME] = [Object.assign({}, mine)]; emit();
+          clearTimeout(pending); pending = setTimeout(track, 120);
+          return Promise.resolve();
+        },
+        onPeers(f){ subs.push(f); setTimeout(emit, 0); return () => {}; },
+        peers: list, connected: () => connected,
+        leave(){ closed = true; clearInterval(hb); try { send('phx_leave', {}); ws && ws.close(); } catch(e){} return Promise.resolve(); },
+      };
+    },
+  };
+}
+
+(async () => {
+  try {
+    roomNS = (window.claude && window.claude.use) ? (await window.claude.use('room') ?? null) : null;
+    if (!roomNS) roomNS = supaNS();
+    if (roomNS){ roomNS.onConnection(c => { S.conn = c; render(); }, () => { roomNS = null; render(); }); }
+    const user = await window.claude?.use?.('user') ?? null;
+    if (user && !S.name){ const me = await user.me(); if (me && me.name){ S.name = me.name.split(' ')[0].slice(0, 14); render(); } }
+  } catch(e){ roomNS = null; }
+  render();
+})();
+
+/* ---------------- multiplayer ---------------- */
+function myPresence(extra){ return Object.assign({me: ME, name: S.name || 'Jucător', col: S.col}, extra || {}); }
+function players(){ // jucătorii prezenți în cameră (cu nume), ordonați
+  const seen = new Set(), out = [];
+  for (const p of S.peers){
+    const pr = p.presence || {}; const id = typeof pr.me === 'string' ? pr.me : null;
+    if (!id || seen.has(id)) continue; seen.add(id);
+    out.push({id, name: String(pr.name || 'Jucător').slice(0, 14), col: COLORS.includes(pr.col) ? pr.col : '#9D7BFF', host: !!pr.host, pr, isMe: id === ME});
+  }
+  return out.sort((a, b) => a.id < b.id ? -1 : 1);
+}
+function hostPeer(){ return players().find(p => p.host && p.pr.g); }
+
+async function createGame(){
+  const code = Array.from({length: 4}, () => 'ABCDEFGHJKLMNPRSTUVXYZ'[rnd(22)]).join('');
+  S.isHost = true;
+  S.g = {v:1, code, phase:'lobby', round:0, total:10, dur:20, cats:['clasic','noapte','romania','cuplu'], pid:0, prompt:'', cat:'', scores:{}, base:{}, res:null, raw:{}, merges:[], winner:null, miza:''};
+  await joinRoom(code);
+}
+async function joinRoom(code){
+  S.err = '';
+  if (!roomNS){ S.err = 'Jocul multiplayer nu e disponibil în această vizualizare. Încearcă „Un singur telefon”.'; render(); return; }
+  try {
+    const R = await roomNS.join('glf-' + code.toLowerCase());
+    S.R = R; S.code = code.toUpperCase(); S.screen = 'game';
+    R.onPeers(ch => { S.peers = ch.peers; onRoomChange(); }, e => { S.err = 'Conexiunea s-a pierdut. Reintră cu codul.'; render(); });
+    await pushPresence();
+    store.set('glf.last', S.code);
+    render();
+  } catch(e){
+    S.err = e && e.code === 'not_permitted' ? 'Nu ai acces la camerele de joc din această pagină.' : 'Nu m-am putut conecta. Mai încearcă o dată.';
+    render();
+  }
+}
+async function pushPresence(){
+  if (!S.R) return;
+  const extra = {sub: S.submittedFor};
+  if (S.isHost && S.g) { extra.host = true; extra.g = S.g; } else { extra.host = null; extra.g = null; }
+  if (S.g && S.g.phase === 'rev' && S.revSentFor === S.g.round) extra.ans = {r: S.g.round, t: S.answer.slice(0, 24)};
+  try { await S.R.presence(myPresence(extra)); } catch(e){}
+}
+function leave(){
+  if (S.R){ try{ S.R.leave(); }catch(e){} }
+  Object.assign(S, {R:null, peers:[], g:null, isHost:false, screen:'home', answer:'', submittedFor:0, seenPid:-1, revSentFor:0});
+  clearTimeout(S.hostT); render();
+}
+
+let lastHostSeen = Date.now();
+function onRoomChange(){
+  const hp = hostPeer();
+  if (!S.isHost){
+    if (hp){ lastHostSeen = Date.now(); adoptState(hp.pr.g); }
+    else if (S.g && Date.now() - lastHostSeen > 4000){
+      // gazda a plecat: preia jocul jucătorul cu id-ul cel mai mic
+      const ps = players(); if (ps.length && ps[0].isMe){ S.isHost = true; pushPresence(); }
+    }
+  }
+  if (S.isHost) hostTick();
+  render();
+}
+function adoptState(g){
+  if (!g || typeof g !== 'object') return;
+  const prev = S.g; S.g = g;
+  if (!prev || prev.pid !== g.pid){
+    if (g.phase === 'q' && S.seenPid !== g.pid){ S.seenPid = g.pid; S.qStart = performance.now(); if (!prev || prev.round !== g.round){ S.answer = ''; } }
+    if (g.phase === 'rev' && S.revSentFor !== g.round){ S.revSentFor = g.round; pushPresence(); }
+    if (g.phase === 'lobby'){ S.submittedFor = 0; S.revSentFor = 0; S.answer = ''; }
+  }
+}
+setInterval(() => { if (S.R) onRoomChange(); if (S.screen === 'game' && S.g && S.g.phase === 'q') paintTimer(); }, 500);
+
+/* ---- logica gazdei ---- */
+function nextPrompt(cats){
+  const pool = []; for (const c of cats) for (const t of (Q[c] || [])) pool.push([c, t]);
+  if (!pool.length) return ['clasic', 'Un fruct galben'];
+  const key = cats.join(',');
+  if (!S.bag[key] || !S.bag[key].length) S.bag[key] = shuffle(pool);
+  return S.bag[key].pop();
+}
+function setG(patch){ S.g = Object.assign({}, S.g, patch); if (patch.pid !== undefined && S.g.phase === 'q'){ S.seenPid = S.g.pid; S.qStart = performance.now(); } pushPresence(); render(); }
+function startRound(){
+  const g = S.g, round = g.round + 1;
+  const [cat, prompt] = nextPrompt(g.cats);
+  S.answer = ''; S.submittedFor = 0;
+  setG({phase:'q', round, cat, prompt, pid: g.pid + 1, res:null, raw:{}, merges:[], base: Object.assign({}, g.scores)});
+}
+function hostTick(){
+  const g = S.g; if (!g) return;
+  const ps = players();
+  if (g.phase === 'q'){
+    const all = ps.length > 0 && ps.every(p => (p.isMe ? S.submittedFor : p.pr.sub) === g.round);
+    const elapsed = (performance.now() - S.qStart) / 1000;
+    if (all || elapsed > g.dur + 1.5){ S.revSentFor = g.round; S.revWaitStart = performance.now(); setG({phase:'rev', pid: g.pid + 1, revAt: Date.now()}); }
+  } else if (g.phase === 'rev' && !g.res){
+    const raw = {}; let have = 0;
+    for (const p of ps){
+      if (p.isMe){ raw[p.id] = S.answer.slice(0, 24); have++; }
+      else if (p.pr.ans && p.pr.ans.r === g.round){ raw[p.id] = String(p.pr.ans.t || '').slice(0, 24); have++; }
+    }
+    if (!S.revWaitStart) S.revWaitStart = performance.now();   // gazdă preluată în mijlocul rundei
+    const waited = (performance.now() - S.revWaitStart) / 1000;
+    if (have === ps.length || waited > 4){ finalizeRound(raw, ps.map(p => p.id), []); }
+  }
+}
+function finalizeRound(raw, ids, merges){
+  const g = S.g; S.revWaitStart = 0; const r = score(raw, ids, merges);
+  const scores = Object.assign({}, g.base);
+  for (const id of ids) scores[id] = (scores[id] || 0) + (r.pts[id] || 0);
+  const names = {}; for (const p of players()) names[p.id] = p.name;
+  setG({res: {groups: r.groups.map(x => ({d: x.d, keys: x.keys, ps: x.ps, pts: x.pts})), empty: r.empty, ids}, raw, merges, scores, names: Object.assign({}, g.names || {}, names)});
+}
+function mergeSelected(){
+  const g = S.g; if (!g || !g.res || S.sel.length < 2) return;
+  const keys = []; for (const i of S.sel){ const gr = g.res.groups[i]; if (gr) keys.push(...gr.keys); }
+  const merges = (g.merges || []).concat([keys]); S.sel = [];
+  finalizeRound(g.raw, g.res.ids, merges);
+}
+function nextOrEnd(){
+  const g = S.g;
+  if (g.round >= g.total){
+    const ids = Object.keys(g.scores); const best = Math.max(0, ...ids.map(i => g.scores[i]));
+    setG({phase:'end', pid: g.pid + 1, winner: ids.filter(i => g.scores[i] === best), miza: MIZE[rnd(MIZE.length)]});
+  } else startRound();
+}
+function rematch(){ S.submittedFor = 0; setG({phase:'lobby', round:0, pid: S.g.pid + 1, scores:{}, base:{}, res:null, raw:{}, merges:[], winner:null}); }
+
+/* ---- acțiunile jucătorului ---- */
+function submitAnswer(){
+  const inp = $('ans'); if (inp) S.answer = inp.value.trim().slice(0, 24);
+  if (!S.answer) return;
+  S.submittedFor = S.g.round; pushPresence(); render();
+  if (S.isHost) hostTick();
+}
+
+/* ---------------- un singur telefon ---------------- */
+function localStart(){
+  const names = (S.localNames || []).map(s => s.trim()).filter(Boolean).slice(0, 8);
+  if (names.length < 2) { S.err = 'Adaugă cel puțin 2 jucători.'; render(); return; }
+  S.err = '';
+  S.local = {names, ids: names.map((_, i) => 'l' + i), total: S.localTotal || 10, cats: S.localCats || ['clasic','noapte','romania','cuplu'], round: 0, scores: {}, step: 0, raw: {}, res: null, phase: 'q', merges: []};
+  localNext();
+}
+function localNext(){
+  const L = S.local;
+  if (L.round >= L.total){ L.phase = 'end'; render(); return; }
+  L.round++; const [cat, prompt] = nextPrompt(L.cats); Object.assign(L, {cat, prompt, step: 0, raw: {}, res: null, phase: 'hand', merges: []}); render();
+}
+function localFinal(){ const L = S.local; const r = score(L.raw, L.ids, L.merges); L.res = r; L.base = L.base && L.base.round === L.round ? L.base : {round: L.round, s: Object.assign({}, L.scores)};
+  L.scores = Object.assign({}, L.base.s); for (const id of L.ids) L.scores[id] = (L.scores[id] || 0) + (r.pts[id] || 0); L.phase = 'rev'; render(); }
+
+/* ---------------- ecrane ---------------- */
+function render(){
+  const app = $('app'); let h = '';
+  if (S.rulesOpen) h = scrRules();
+  else if (S.local) h = scrLocal();
+  else if (S.screen === 'home') h = scrHome();
+  else if (S.screen === 'localsetup') h = scrLocalSetup();
+  else h = scrGame();
+  if (h === lastHtml){ paintTimer(); return; }   // nimic nou: nu redesenăm (păstrăm tastarea și animațiile)
+  const screenKey = h.slice(0, 160).replace(/value="[^"]*"/g, '');
+  const sameScreen = screenKey === lastKey; lastHtml = h; lastKey = screenKey;
+  const focused = document.activeElement && document.activeElement.id; const val = focused && $(focused) ? $(focused).value : null;
+  const sel = focused && $(focused) && $(focused).selectionStart != null ? [$(focused).selectionStart, $(focused).selectionEnd] : null;
+  app.innerHTML = sameScreen ? h.replace(/class="fade /g, 'class="').replace(/ pop /g, ' ').replace(/ pop"/g, '"') : h;
+  if (focused && $(focused)){ const el = $(focused); if (val != null) el.value = val; el.focus({preventScroll: true}); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch(e){} }
+  paintTimer();
+}
+function avatar(p){ return `<span class="av" style="background:${p.col}">${esc((p.name || '?').slice(0,1).toUpperCase())}</span>`; }
+function catOf(id){ return CATS.find(c => c.id === id) || CATS[0]; }
+
+function scrHome(){
+  const multi = !!roomNS;
+  return `<section class="fade stack">
+    <div class="logo"><h1 class="neon neon-pink">GÂNDIM<br>LA FEL?</h1>
+      <p class="sub mute">Aceeași întrebare pe toate telefoanele. Scrii un răspuns în 20 de secunde. Iei puncte dacă nimerești ce au scris și ceilalți.</p></div>
+    <div class="card stack">
+      <label class="kick" for="nm">Numele tău</label>
+      <input class="field" id="nm" maxlength="14" autocomplete="off" value="${esc(S.name)}" placeholder="ex. Ned">
+      <div class="chips" role="group" aria-label="Culoarea ta">${COLORS.map(c => `<button class="dot" style="background:${c};--c:${c}" data-act="col" data-v="${c}" aria-pressed="${S.col === c}" aria-label="Culoare"></button>`).join('')}</div>
+    </div>
+    <div class="card stack glowbox" style="--c:var(--pink)">
+      <button class="btn solid" data-act="create" ${multi ? '' : 'disabled'}>Creează joc</button>
+      <div class="row"><input class="field code grow" id="code" maxlength="4" autocomplete="off" placeholder="COD" value="${esc(S.codeDraft || '')}" aria-label="Codul jocului"><button class="btn cyan sm" style="width:auto;min-width:110px;min-height:54px" data-act="join" ${multi ? '' : 'disabled'}>Intră</button></div>
+      ${multi ? `<p class="small mute" style="margin:0">Fiecare deschide pagina pe telefonul lui. Unul creează jocul, ceilalți intră cu codul de 4 litere.</p>`
+              : `<p class="banner" style="margin:0">Jocul pe mai multe telefoane merge când toți sunteți conectați la Claude și aveți acces la această pagină (trimite-le linkul din meniul Share). Până atunci, jucați pe un singur telefon.</p>`}
+    </div>
+    ${S.codeDraft && !S.err ? `<p class="status" style="color:var(--green)">Ai primit o invitație: scrie-ți numele și apasă „Intră”.</p>` : ''}
+    ${S.err ? `<p class="status" style="color:var(--red)">${esc(S.err)}</p>` : ''}
+    <button class="btn violet sm" data-act="localsetup">Un singur telefon</button>
+    <button class="link" data-act="rules">Cum se joacă</button>
+  </section>`;
+}
+function scrRules(){
+  return `<section class="fade stack">
+    <h2 class="neon neon-cyan" style="font-size:40px;margin-top:14px">CUM SE JOACĂ</h2>
+    <div class="card stack">
+      <p style="margin:0"><b>1.</b> Toți văd aceeași întrebare, de exemplu „Ce comanzi la shaorma la 3 noaptea”.</p>
+      <p style="margin:0"><b>2.</b> Fiecare scrie în secret un răspuns scurt, în 20 de secunde.</p>
+      <p style="margin:0"><b>3.</b> Răspunsurile apar deodată. Primești 1 punct pentru fiecare jucător care a scris același lucru ca tine, plus 2 puncte bonus dacă ați nimerit toți.</p>
+      <p style="margin:0"><b>4.</b> În doi: dacă nimeriți același răspuns, primiți câte 3 puncte.</p>
+      <p style="margin:0"><b>5.</b> Diacriticele și greșelile mici nu contează. Dacă două răspunsuri înseamnă același lucru („bere” și „o bere rece”), gazda le poate uni.</p>
+      <p style="margin:0"><b>6.</b> După ultima rundă, cine are cele mai multe puncte câștigă și primește o Miză de la ceilalți.</p>
+    </div>
+    <button class="btn cyan" data-act="rulesclose">Am înțeles</button>
+  </section>`;
+}
+function topBar(){
+  const g = S.g;
+  return `<div class="top"><span class="kick">COD <b style="color:#fff;letter-spacing:.2em">${esc(S.code)}</b>${g && g.round ? ` · RUNDA ${g.round}/${g.total}` : ''}</span>
+    <span class="row"><span class="small" style="color:${S.conn ? 'var(--green)' : 'var(--mute)'}">${S.conn ? '● live' : '○ conectare…'}</span><button class="link" style="padding:6px" data-act="leave">Ieși</button></span></div>`;
+}
+function settingsChips(g, editable){
+  const dis = editable ? '' : 'disabled';
+  return `<div class="stack">
+    <span class="kick">Categorii</span>
+    <div class="chips">${CATS.map(c => `<button class="chip" style="--c:${c.c}" data-act="cat" data-v="${c.id}" aria-pressed="${g.cats.includes(c.id)}" ${dis}>${c.name}</button>`).join('')}</div>
+    <span class="kick">Runde</span>
+    <div class="chips">${[5,10,15].map(n => `<button class="chip" data-act="total" data-v="${n}" aria-pressed="${g.total === n}" ${dis}>${n}</button>`).join('')}</div>
+    <span class="kick">Timp</span>
+    <div class="chips">${[15,20,30].map(n => `<button class="chip" data-act="dur" data-v="${n}" aria-pressed="${g.dur === n}" ${dis}>${n} s</button>`).join('')}</div>
+  </div>`;
+}
+function scrGame(){
+  const g = S.g;
+  if (!g) return `<section class="fade stack">${topBar()}<div class="card stack" style="text-align:center"><h2 class="neon neon-cyan" style="font-size:34px">Te conectez…</h2><p class="mute">Aștept gazda jocului ${esc(S.code)}. Verifică dacă ai scris corect codul.</p></div>${S.err ? `<p class="status" style="color:var(--red)">${esc(S.err)}</p>` : ''}<button class="btn violet sm" data-act="leave">Înapoi</button></section>`;
+  const ps = players();
+  if (g.phase === 'lobby'){
+    return `<section class="fade stack">${topBar()}
+      <div class="card glowbox stack" style="--c:var(--cyan);text-align:center">
+        <span class="kick">Codul jocului</span><div class="codebig neon neon-cyan">${esc(g.code)}</div>
+        <p class="small mute" style="margin:0">Ceilalți deschid pagina și intră cu acest cod.</p>
+        ${!window.claude ? `<a class="btn green solid" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent('Hai să jucăm „Gândim la fel?”! Intră aici: ' + inviteUrl(g.code))}">Invită pe WhatsApp</a>
+          <button class="link" data-act="copy">Copiază linkul</button>` : ''}</div>
+      <div class="card stack"><span class="kick">Jucători (${ps.length})</span>
+        <div class="players">${ps.map(p => `<div class="pl">${avatar(p)}<span class="nm">${esc(p.name)}${p.isMe ? ' (tu)' : ''}</span>${p.host ? '<span class="tag">gazdă</span>' : ''}</div>`).join('')}</div></div>
+      <div class="card">${settingsChips(g, S.isHost)}</div>
+      ${S.isHost ? `<button class="btn solid" data-act="start" ${ps.length >= 2 ? '' : 'disabled'}>${ps.length >= 2 ? 'Începe jocul' : 'Așteaptă jucătorii…'}</button>` : `<p class="status">Gazda pornește jocul.</p>`}
+    </section>`;
+  }
+  if (g.phase === 'q'){
+    const c = catOf(g.cat); const done = S.submittedFor === g.round;
+    return `<section class="fade stack">${topBar()}
+      <div class="card glowbox stack" style="--c:${c.c};text-align:center">
+        <span><span class="catchip" style="--c:${c.c}">${esc(c.name)}</span></span>
+        <div class="prompt neon" style="--c:${c.c}">${esc(g.prompt)}</div>
+        <div class="row"><div class="timer grow"><i id="tbar"></i></div><span class="tnum" id="tnum">${g.dur}</span></div>
+      </div>
+      ${done ? `<div class="card stack" style="text-align:center"><span class="kick">Răspunsul tău</span><div class="prompt neon neon-green" style="font-size:34px">${esc(S.answer)}</div><button class="link" data-act="edit">Schimbă răspunsul</button></div>`
+             : `<div class="stack"><input class="field" id="ans" maxlength="24" autocomplete="off" autocapitalize="off" enterkeyhint="send" placeholder="Răspunsul tău…" value="${esc(S.answer)}"><button class="btn green solid" data-act="submit">Trimite</button></div>`}
+      <div class="card"><span class="kick">Au răspuns</span><div class="chips" style="margin-top:8px">${ps.map(p => { const ok = (p.isMe ? S.submittedFor : p.pr.sub) === g.round; return `<span class="chip" style="--c:${p.col}" aria-pressed="${ok}">${ok ? '✓ ' : ''}${esc(p.name)}</span>`; }).join('')}</div></div>
+    </section>`;
+  }
+  if (g.phase === 'rev'){
+    const c = catOf(g.cat);
+    if (!g.res) return `<section class="fade stack">${topBar()}<div class="card glowbox" style="--c:${c.c};text-align:center"><div class="prompt neon" style="--c:${c.c}">${esc(g.prompt)}</div><p class="mute">Strâng răspunsurile…</p></div></section>`;
+    const names = g.names || {};
+    const nm = id => esc(names[id] || (ps.find(p => p.id === id) || {}).name || 'Jucător');
+    const groups = g.res.groups.map((gr, i) => `<div class="group pop ${gr.ps.length > 1 ? 'match' : ''} ${S.sel.includes(i) ? 'sel' : ''}" style="animation-delay:${i * 120}ms" ${S.isHost ? `data-act="sel" data-v="${i}" role="button" tabindex="0" aria-pressed="${S.sel.includes(i)}"` : ''}>
+        <div class="row"><span class="ans grow">${esc(gr.d)}</span>${gr.pts ? `<span class="plus">+${gr.pts}</span>` : ''}</div>
+        <div class="who">${gr.ps.map(id => `<span>${nm(id)}</span>`).join('')}</div></div>`).join('');
+    const empty = (g.res.empty || []).length ? `<p class="small mute" style="margin:0">Fără răspuns: ${g.res.empty.map(nm).join(', ')}</p>` : '';
+    const board = Object.keys(g.scores).sort((a, b) => g.scores[b] - g.scores[a]).map(id => { const p = ps.find(x => x.id === id) || {name: names[id] || 'Jucător', col: '#9D7BFF'}; return `<div class="pl">${avatar(p)}<span class="nm">${esc(p.name)}${id === ME ? ' (tu)' : ''}</span><span class="pts">${g.scores[id]}</span></div>`; }).join('');
+    return `<section class="fade stack">${topBar()}
+      <div class="card glowbox" style="--c:${c.c};text-align:center"><span class="catchip" style="--c:${c.c}">${esc(c.name)}</span><div class="prompt neon" style="--c:${c.c};font-size:30px">${esc(g.prompt)}</div></div>
+      <div class="stack">${groups}${empty}</div>
+      ${S.isHost ? `<p class="small mute" style="margin:0;text-align:center">Două răspunsuri înseamnă același lucru? Atinge-le pe amândouă și apasă „Sunt la fel”.</p>
+        <button class="btn yellow sm" data-act="merge" ${S.sel.length >= 2 ? '' : 'disabled'}>Sunt la fel</button>` : ''}
+      <div class="card stack"><span class="kick">Scor</span><div class="players">${board}</div></div>
+      ${S.isHost ? `<button class="btn solid" data-act="next">${g.round >= g.total ? 'Vezi câștigătorul' : 'Runda următoare'}</button>` : `<p class="status">Gazda trece la runda următoare.</p>`}
+    </section>`;
+  }
+  if (g.phase === 'end'){
+    const names = g.names || {};
+    const rank = Object.keys(g.scores).sort((a, b) => g.scores[b] - g.scores[a]);
+    const P = id => ps.find(x => x.id === id) || {name: names[id] || 'Jucător', col: '#9D7BFF'};
+    const top = [rank[1], rank[0], rank[2]].filter(Boolean);
+    const hts = {0: 150, 1: 105, 2: 75}; const cols = {0: 'var(--pink)', 1: 'var(--cyan)', 2: 'var(--yellow)'};
+    const pod = top.map(id => { const pl = rank.indexOf(id); return `<div class="pod"><span class="nm">${esc(P(id).name)}</span><span class="pts" style="font:800 22px var(--f-sign)">${g.scores[id]}</span><div class="blk" style="height:${hts[pl]}px;--c:${cols[pl]}">${pl + 1}</div></div>`; }).join('');
+    const win = (g.winner || []).map(id => esc(P(id).name)).join(' și ');
+    return `<section class="fade stack">${topBar()}
+      <h2 class="neon neon-yellow" style="font-size:44px;text-align:center;margin-top:8px">${(g.winner || []).length > 1 ? 'EGALITATE!' : 'CÂȘTIGĂ'}</h2>
+      <p class="prompt neon neon-pink" style="font-size:40px">${win}</p>
+      <div class="podium">${pod}</div>
+      <div class="card glowbox stack" style="--c:var(--green);text-align:center"><span class="kick">Miza pentru ceilalți</span><div style="font:800 26px/1.1 var(--f-sign)" class="neon neon-green">${esc(g.miza)}</div></div>
+      ${S.isHost ? `<button class="btn solid" data-act="rematch">Revanșă</button>` : `<p class="status">Gazda poate porni revanșa.</p>`}
+      <button class="btn violet sm" data-act="leave">Ieși din joc</button>
+    </section>`;
+  }
+  return '';
+}
+function paintTimer(){
+  const g = S.g; const bar = $('tbar'), num = $('tnum'); if (!g || g.phase !== 'q' || !bar) return;
+  const left = Math.max(0, g.dur - (performance.now() - S.qStart) / 1000);
+  bar.style.transform = `scaleX(${left / g.dur})`; num.textContent = Math.ceil(left);
+  if (left <= 0 && S.submittedFor !== g.round){ const inp = $('ans'); if (inp && inp.value.trim()){ S.answer = inp.value.trim().slice(0, 24); S.submittedFor = g.round; pushPresence(); render(); } }
+}
+
+/* ---- un singur telefon: ecrane ---- */
+function scrLocalSetup(){
+  const names = S.localNames || (S.localNames = [S.name || 'Ned', 'Andreea']);
+  const cats = S.localCats || (S.localCats = ['clasic','noapte','romania','cuplu']); const total = S.localTotal || (S.localTotal = 10);
+  return `<section class="fade stack"><h2 class="neon neon-cyan" style="font-size:40px;margin-top:14px">UN SINGUR TELEFON</h2>
+    <p class="mute" style="margin:0">Telefonul trece din mână în mână. Fiecare scrie răspunsul fără să vadă ceilalți.</p>
+    <div class="card stack"><span class="kick">Jucători</span>
+      ${names.map((n, i) => `<div class="row"><input class="field grow" id="ln${i}" data-ln="${i}" maxlength="14" value="${esc(n)}" placeholder="Jucătorul ${i + 1}">${names.length > 2 ? `<button class="btn sm violet" style="width:54px" data-act="lndel" data-v="${i}" aria-label="Șterge">×</button>` : ''}</div>`).join('')}
+      ${names.length < 8 ? `<button class="btn sm cyan" data-act="lnadd">+ Jucător</button>` : ''}</div>
+    <div class="card">${settingsChips({cats, total, dur: 20}, true).replace(/data-act="cat"/g, 'data-act="lcat"').replace(/data-act="total"/g, 'data-act="ltotal"').replace(/<span class="kick">Timp<\/span>[\s\S]*?<\/div>\s*<\/div>$/, '</div>')}</div>
+    ${S.err ? `<p class="status" style="color:var(--red)">${esc(S.err)}</p>` : ''}
+    <button class="btn solid" data-act="lstart">Începe</button><button class="link" data-act="home">Înapoi</button></section>`;
+}
+function scrLocal(){
+  const L = S.local; const c = catOf(L.cat);
+  const nm = i => esc(L.names[i]);
+  if (L.phase === 'hand'){
+    return `<section class="fade hand stack"><span class="kick">Runda ${L.round}/${L.total} · dă telefonul lui</span><div class="who neon neon-pink">${nm(L.step)}</div>
+      <p class="mute">Ceilalți nu se uită.</p><button class="btn solid" data-act="lshow">Sunt ${nm(L.step)}</button><button class="link" data-act="lquit">Ieși</button></section>`;
+  }
+  if (L.phase === 'type'){
+    return `<section class="fade stack"><div class="top"><span class="kick">${nm(L.step)} · runda ${L.round}/${L.total}</span></div>
+      <div class="card glowbox stack" style="--c:${c.c};text-align:center"><span><span class="catchip" style="--c:${c.c}">${esc(c.name)}</span></span><div class="prompt neon" style="--c:${c.c}">${esc(L.prompt)}</div></div>
+      <input class="field" id="lans" maxlength="24" autocomplete="off" autocapitalize="off" placeholder="Răspunsul tău…"><button class="btn green solid" data-act="lsubmit">Gata</button></section>`;
+  }
+  if (L.phase === 'rev'){
+    const r = L.res;
+    const groups = r.groups.map((gr, i) => `<div class="group pop ${gr.ps.length > 1 ? 'match' : ''} ${S.sel.includes(i) ? 'sel' : ''}" data-act="lsel" data-v="${i}" role="button" tabindex="0" style="animation-delay:${i * 120}ms"><div class="row"><span class="ans grow">${esc(gr.d)}</span>${gr.pts ? `<span class="plus">+${gr.pts}</span>` : ''}</div><div class="who">${gr.ps.map(id => `<span>${nm(+id.slice(1))}</span>`).join('')}</div></div>`).join('');
+    const board = L.ids.slice().sort((a, b) => (L.scores[b] || 0) - (L.scores[a] || 0)).map(id => `<div class="pl"><span class="nm">${nm(+id.slice(1))}</span><span class="pts">${L.scores[id] || 0}</span></div>`).join('');
+    return `<section class="fade stack"><div class="card glowbox" style="--c:${c.c};text-align:center"><div class="prompt neon" style="--c:${c.c};font-size:30px">${esc(L.prompt)}</div></div>
+      <div class="stack">${groups}</div><button class="btn yellow sm" data-act="lmerge" ${S.sel.length >= 2 ? '' : 'disabled'}>Sunt la fel</button>
+      <div class="card stack"><span class="kick">Scor</span><div class="players">${board}</div></div>
+      <button class="btn solid" data-act="lnext">${L.round >= L.total ? 'Vezi câștigătorul' : 'Runda următoare'}</button></section>`;
+  }
+  if (L.phase === 'end'){
+    const best = Math.max(...L.ids.map(id => L.scores[id] || 0)); const win = L.ids.filter(id => (L.scores[id] || 0) === best).map(id => nm(+id.slice(1)));
+    S.localMiza = S.localMiza || MIZE[rnd(MIZE.length)];
+    return `<section class="fade stack"><h2 class="neon neon-yellow" style="font-size:44px;text-align:center;margin-top:16px">${win.length > 1 ? 'EGALITATE!' : 'CÂȘTIGĂ'}</h2>
+      <p class="prompt neon neon-pink" style="font-size:40px">${win.join(' și ')}</p>
+      <div class="card glowbox stack" style="--c:var(--green);text-align:center"><span class="kick">Miza pentru ceilalți</span><div style="font:800 26px/1.1 var(--f-sign)" class="neon neon-green">${esc(S.localMiza)}</div></div>
+      <button class="btn solid" data-act="lagain">Revanșă</button><button class="link" data-act="lquit">Ieși</button></section>`;
+  }
+  return '';
+}
+
+/* ---------------- evenimente ---------------- */
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el || el.disabled) return;
+  const a = el.dataset.act, v = el.dataset.v; const g = S.g;
+  switch (a){
+    case 'col': S.col = v; store.set('glf.col', v); render(); break;
+    case 'create': saveName(); if (!S.name){ S.err = 'Scrie-ți numele.'; render(); break; } createGame(); break;
+    case 'join': { saveName(); const code = ($('code') || {}).value || ''; if (!S.name){ S.err = 'Scrie-ți numele.'; render(); break; }
+      if (!/^[A-Za-z]{4}$/.test(code.trim())){ S.err = 'Codul are 4 litere.'; render(); break; } S.isHost = false; S.g = null; joinRoom(code.trim()); break; }
+    case 'leave': leave(); break;
+    case 'copy': { const u = inviteUrl(S.code); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => { el.textContent = 'Link copiat!'; }).catch(() => { prompt && el.insertAdjacentHTML('afterend', `<p class="small" style="word-break:break-all">${esc(u)}</p>`); }); break; }
+    case 'rules': S.rulesOpen = true; render(); break;
+    case 'rulesclose': S.rulesOpen = false; render(); break;
+    case 'cat': if (S.isHost && g){ const cats = g.cats.includes(v) ? g.cats.filter(x => x !== v) : g.cats.concat(v); if (cats.length) setG({cats}); } break;
+    case 'total': if (S.isHost && g) setG({total: +v}); break;
+    case 'dur': if (S.isHost && g) setG({dur: +v}); break;
+    case 'start': if (S.isHost) startRound(); break;
+    case 'submit': submitAnswer(); break;
+    case 'edit': S.submittedFor = 0; pushPresence(); render(); setTimeout(() => $('ans') && $('ans').focus(), 30); break;
+    case 'sel': { const i = +v; S.sel = S.sel.includes(i) ? S.sel.filter(x => x !== i) : S.sel.concat(i); render(); break; }
+    case 'merge': mergeSelected(); break;
+    case 'next': S.sel = []; nextOrEnd(); break;
+    case 'rematch': rematch(); break;
+    case 'localsetup': saveName(); S.err = ''; S.screen = 'localsetup'; render(); break;
+    case 'home': S.screen = 'home'; S.err = ''; render(); break;
+    case 'lnadd': readLocalNames(); S.localNames.push(''); render(); break;
+    case 'lndel': readLocalNames(); S.localNames.splice(+v, 1); render(); break;
+    case 'lcat': { readLocalNames(); const c = S.localCats; S.localCats = c.includes(v) ? (c.length > 1 ? c.filter(x => x !== v) : c) : c.concat(v); render(); break; }
+    case 'ltotal': readLocalNames(); S.localTotal = +v; render(); break;
+    case 'lstart': readLocalNames(); S.localMiza = null; localStart(); break;
+    case 'lshow': S.local.phase = 'type'; render(); setTimeout(() => $('lans') && $('lans').focus(), 30); break;
+    case 'lsubmit': { const L = S.local; L.raw[L.ids[L.step]] = (($('lans') || {}).value || '').trim().slice(0, 24); L.step++; if (L.step >= L.names.length) localFinal(); else { L.phase = 'hand'; render(); } break; }
+    case 'lsel': { const i = +v; S.sel = S.sel.includes(i) ? S.sel.filter(x => x !== i) : S.sel.concat(i); render(); break; }
+    case 'lmerge': { const L = S.local; const keys = []; for (const i of S.sel){ keys.push(...L.res.groups[i].keys); } L.merges.push(keys); S.sel = []; localFinal(); break; }
+    case 'lnext': S.sel = []; localNext(); break;
+    case 'lagain': S.localMiza = null; S.local = null; localStart(); break;
+    case 'lquit': S.local = null; S.screen = 'home'; render(); break;
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter'){
+    if (e.target.id === 'ans'){ e.preventDefault(); submitAnswer(); }
+    else if (e.target.id === 'lans'){ e.preventDefault(); document.querySelector('[data-act="lsubmit"]').click(); }
+    else if (e.target.id === 'code'){ e.preventDefault(); document.querySelector('[data-act="join"]').click(); }
+    else if (e.target.closest && e.target.closest('[data-act="sel"],[data-act="lsel"]')){ e.preventDefault(); e.target.click(); }
+  }
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'ans') S.answer = e.target.value.slice(0, 24);
+  if (e.target.id === 'nm') { S.name = e.target.value.slice(0, 14); store.set('glf.name', S.name); }
+  if (e.target.id === 'code') S.codeDraft = e.target.value.toUpperCase();
+});
+function inviteUrl(code){ return location.origin + location.pathname + '?cod=' + code; }
+try { const c = new URLSearchParams(location.search).get('cod'); if (c && /^[A-Za-z]{4}$/.test(c)) S.codeDraft = c.toUpperCase(); } catch(e){}
+function saveName(){ const el = $('nm'); if (el){ S.name = el.value.trim().slice(0, 14); store.set('glf.name', S.name); } }
+function readLocalNames(){ if (!S.localNames) return; S.localNames = S.localNames.map((n, i) => { const el = $('ln' + i); return el ? el.value : n; }); }
+
+render();
+</script>
+</body></html>
